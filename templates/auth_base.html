@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}DROP{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="flash-stack">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, msg in messages %}
+      <div class="flash-item {{ category }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+<div class="auth-wrap">
+  <div class="auth-visual">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div class="drop-mark" style="width:48px;height:48px;font-size:22px;">D</div>
+      <div>
+        <div style="font-family:var(--font-display); font-weight:700; font-size:22px;">DROP</div>
+        <div style="opacity:0.7; font-size:12.5px;">The AI Teacher That Never Stops Teaching</div>
+      </div>
+    </div>
+    <div class="quote">
+      "Every student gets a personal teacher. Every teacher gets a tireless AI co-teacher.
+      That's DROP."
+    </div>
+    <div style="display:flex; gap:28px; opacity:0.85; font-family:var(--font-mono); font-size:13px;">
+      <div><strong style="font-size:20px; display:block;">24/7</strong>AI teaching</div>
+      <div><strong style="font-size:20px; display:block;">100%</strong>auto-graded</div>
+      <div><strong style="font-size:20px; display:block;">1:1</strong>adaptive tutoring</div>
+    </div>
+  </div>
+
+  <div class="auth-form-side">
+    <div class="auth-card fade-in">
+      {% block auth_content %}{% endblock %}
+    </div>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

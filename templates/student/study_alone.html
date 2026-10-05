@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}Study Alone{% endblock %}
+{% block page_title %}Study Alone{% endblock %}
+{% block content %}
+
+<div style="display:grid; grid-template-columns:1fr 1.2fr; gap:24px;">
+  <div class="card-drop">
+    <div class="card-body-drop">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+        <div class="ai-avatar"><span class="mono" style="font-size:12px;">AI</span></div>
+        <h3 style="margin:0;">Start a solo course</h3>
+      </div>
+      <p class="text-muted-drop" style="margin-bottom:20px;">Give DROP a topic, or upload a document. It builds your course outline and a study schedule first — then you generate each week when you're ready to study it, and the final exam when you're done.</p>
+
+      <form method="POST" enctype="multipart/form-data" id="solo-form">
+        <input type="hidden" name="tz_offset" value="0">
+        <div style="margin-bottom:16px;">
+          <label class="form-label-drop">Topic</label>
+          <input class="form-control-drop" type="text" name="topic" placeholder="e.g. Photosynthesis, Linear Algebra, French Revolution">
+        </div>
+        <div style="margin-bottom:22px;">
+          <label class="form-label-drop">Or upload a document</label>
+          <input class="form-control-drop" type="file" name="document" accept=".pdf,.docx,.txt,.md">
+          <div class="form-hint">{{ ic.icon('upload', 12) }} PDF, Word, or text files supported.</div>
+        </div>
+        <button class="btn-drop-primary" type="submit" id="solo-btn" style="width:100%; justify-content:center;">{{ ic.icon('sparkles', 16) }} Build my course outline</button>
+      </form>
+    </div>
+  </div>
+
+  <div>
+    <h4 style="margin-bottom:14px;">Your solo sessions</h4>
+    {% if sessions %}
+    <div style="display:grid; gap:12px;">
+      {% for s in sessions %}
+      <a href="{{ url_for('student_study_session', session_id=s.id) }}" class="card-drop hoverable" style="display:block; padding:16px 18px; text-decoration:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:600; color:var(--ink); font-size:14.5px;">{{ s.topic }}</div>
+            <div class="text-muted-drop" style="font-size:12.5px;">{{ s.created_at.strftime('%b %d, %Y') }}</div>
+          </div>
+          {% if s.status == 'ready' %}<span class="pill pill-teal">Ready</span>
+          {% elif s.status == 'pending' %}<span class="pill pill-amber">Building…</span>
+          {% else %}<span class="pill pill-red">Failed</span>{% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card-drop empty-state">{{ ic.icon('sparkles', 40) }}<p>No solo sessions yet — start your first above.</p></div>
+    {% endif %}
+  </div>
+</div>
+<script>
+document.getElementById('solo-form').addEventListener('submit', function() {
+  var b = document.getElementById('solo-btn'); b.disabled = true; b.innerHTML = 'Building your outline…';
+});
+</script>
+{% endblock %}

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en" data-theme="{{ current_user.theme if current_user.is_authenticated else 'light' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}DROP{% endblock %} · DROP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script>
+    (function() {
+      var saved = localStorage.getItem('drop-theme');
+      if (saved) document.documentElement.setAttribute('data-theme', saved);
+    })();
+  </script>
+  <!-- MathJax: renders LaTeX math (\( \) inline, \[ \] display) that the AI tutor
+       and generated lessons write. Any page that inserts new AI text dynamically
+       (e.g. the tutor chat) must call MathJax.typesetPromise() on the new element
+       after inserting it, since MathJax only auto-scans the page once on load. -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']], processEscapes: true },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+    };
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js" defer></script>
+  <style>
+    /* AI-written lesson text (markdown) */
+    .md > :first-child { margin-top: 0; }
+    .md > :last-child { margin-bottom: 0; }
+    .md p { margin: 0 0 10px; }
+    .md h1, .md h2, .md h3, .md h4 { margin: 18px 0 8px; line-height: 1.3; }
+    .md h1 { font-size: 20px; } .md h2 { font-size: 17px; } .md h3, .md h4 { font-size: 15px; }
+    .md ul, .md ol { padding-left: 22px; margin: 0 0 10px; }
+    .md table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13.5px; display: block; overflow-x: auto; }
+    .md th, .md td { border: 1px solid var(--border); padding: 6px 12px; text-align: left; }
+    .md th { background: var(--surface-2); }
+    .md code { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+    .md pre { background: var(--surface-2); padding: 12px 14px; border-radius: 10px; overflow-x: auto; }
+    .md pre code { background: none; padding: 0; }
+    mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+  </style>
+</head>
+<body>
+{% import "shared/_icons.html" as ic %}
+
+<div class="flash-stack">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, msg in messages %}
+      <div class="flash-item {{ category }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="drop-mark">D</div>
+      <div>
+        <div class="name">DROP</div>
+        <div class="tag">AI that never stops teaching</div>
+      </div>
+    </div>
+
+    <nav>
+      {% if current_user.is_authenticated and current_user.role == 'teacher' %}
+        <div class="nav-section-label">Teach</div>
+        <a class="nav-link-drop {{ 'active' if request.endpoint == 'teacher_dashboard' }}" href="{{ url_for('teacher_dashboard') }}">{{ ic.icon('grid') }} Dashboard</a>
+        <a class="nav-link-drop {{ 'active' if request.endpoint in ('teacher_classroom_overview', 'teacher_classroom_create', 'teacher_classroom_messages', 'teacher_classroom_settings', 'teacher_assignment_create', 'teacher_assignment_submissions', 'teacher_assignment_schedule', 'teacher_attempt_log', 'teacher_classroom_reports') }}" href="{{ url_for('teacher_dashboard') }}">{{ ic.icon('book') }} Classrooms</a>
+        <a class="nav-link-drop {{ 'active' if request.endpoint in ('teacher_insights_home', 'teacher_classroom_students', 'teacher_student_detail') }}" href="{{ url_for('teacher_insights_home') }}">{{ ic.icon('users') }} Students</a>
+        <a class="nav-link-drop {{ 'active' if request.endpoint == 'calendar_page' }}" href="{{ url_for('calendar_page') }}">{{ ic.icon('clock') }} Calendar</a>
+        <div class="nav-section-label">Insights</div>
+        <a class="nav-link-drop {{ 'active' if request.endpoint == 'teacher_classroom_analytics' }}" href="{{ url_for('teacher_insights_home') }}">{{ ic.icon('chart') }} Analytics</a>
+        <a class="nav-link-drop {{ 'active' if request.endpoint == 'notifications' }}" href="{{ url_for('notifications') }}">{{ ic.icon('bell') }} Notifications</a>
+      {% elif current_user.is_authenticated and current_user.role == 'student' %}
+        <div class="nav-section-label">Learn</div>
+        <a class="nav-link-drop {{ 'active' if request.endpoint == 'student_dashboard' }}" href="{{ url_for('student_dashboard') }}">{{ ic.icon('grid') }} Dashboard</a>
+        <a class="nav-link-drop {{ 'active' if request.endpoint == 'calendar_page' }}" href="{{ url_for('calendar_page') }}">{{ ic.icon('clock') }} Calendar</a>
+        <a class="nav-link-drop {{ 'active' if request.endpoint == 'student_study_alone' }}" href="{{ url_for('student_study_alone') }}">{{ ic.icon('sparkles') }} Study Alone</a>
+        <a class="nav-link-drop {{ 'active' if request.endpoint == 'student_assignments' }}" href="{{ url_for('student_assignments') }}">{{ ic.icon('clipboard') }} Assignments</a>
+        <a class="nav-link-drop {{ 'active' if request.endpoint == 'student_tests' }}" href="{{ url_for('student_tests') }}">{{ ic.icon('target') }} Tests &amp; Exams</a>
+        <a class="nav-link-drop {{ 'active' if request.endpoint == 'student_revision' }}" href="{{ url_for('student_revision') }}">{{ ic.icon('refresh') }} Revision</a>
+        <div class="nav-section-label">Connect</div>
+        <a class="nav-link-drop {{ 'active' if request.endpoint == 'student_messages' }}" href="{{ url_for('student_messages') }}">{{ ic.icon('message') }} Messages</a>
+        <a class="nav-link-drop {{ 'active' if request.endpoint == 'student_tutor' }}" href="{{ url_for('student_tutor') }}">{{ ic.icon('zap') }} AI Tutor</a>
+        <div class="nav-section-label">Grow</div>
+        <a class="nav-link-drop {{ 'active' if request.endpoint == 'student_progress' }}" href="{{ url_for('student_progress') }}">{{ ic.icon('chart') }} Progress</a>
+        <a class="nav-link-drop {{ 'active' if request.endpoint == 'student_achievements' }}" href="{{ url_for('student_achievements') }}">{{ ic.icon('award') }} Achievements</a>
+      {% endif %}
+    </nav>
+
+    <div class="sidebar-footer">
+      <a class="nav-link-drop {{ 'active' if request.endpoint == 'settings' }}" href="{{ url_for('settings') }}">{{ ic.icon('settings') }} Settings</a>
+      <a class="nav-link-drop" href="{{ url_for('logout') }}">{{ ic.icon('logout') }} Log out</a>
+    </div>
+  </aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <button class="icon-btn mobile-toggle">{{ ic.icon('menu') }}</button>
+        <h1 style="font-size:18px; margin:0;">{% block page_title %}{% endblock %}</h1>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        {% if current_user.is_authenticated and current_user.role == 'student' %}
+        <span class="pill pill-violet">{{ ic.icon('zap', 13) }} {{ current_user.xp }} XP · Lvl {{ current_user.level }}</span>
+        <span class="pill pill-amber">🪙 {{ current_user.coins }}</span>
+        {% endif %}
+        <button class="icon-btn" data-theme-toggle title="Toggle theme">{{ ic.icon('moon') }}</button>
+        <a class="icon-btn" href="{{ url_for('notifications') }}" title="Notifications">
+          {{ ic.icon('bell') }}
+          {% if unread_notifications %}<span class="notif-dot">{{ unread_notifications }}</span>{% endif %}
+        </a>
+        <div class="ai-avatar mono" style="font-size:12px;">{{ current_user.name[0]|upper if current_user.is_authenticated else '?' }}</div>
+      </div>
+    </header>
+
+    <main class="page-content fade-in">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+/* Dates & times: the server sends UTC; show them in the viewer's own timezone. */
+(function () {
+  function pad(n) { return String(n).padStart(2, '0'); }
+  document.querySelectorAll('time[data-local]').forEach(function (el) {
+    var d = new Date(el.getAttribute('datetime')); if (isNaN(d)) return;
+    var f = el.getAttribute('data-fmt') || 'datetime';
+    var opts = f === 'date' ? { month: 'short', day: 'numeric' }
+             : f === 'time' ? { hour: 'numeric', minute: '2-digit' }
+             : f === 'long' ? { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }
+             : { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+    el.textContent = d.toLocaleString(undefined, opts);
+    el.title = d.toString();
+  });
+  document.querySelectorAll('input[type=datetime-local][data-utc]').forEach(function (i) {
+    var d = new Date(i.getAttribute('data-utc')); if (isNaN(d)) return;
+    i.value = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  });
+  document.querySelectorAll('input[name=tz_offset]').forEach(function (i) { i.value = new Date().getTimezoneOffset(); });
+  /* Send the exact UTC instant for every date-time field (correct across daylight-saving changes). */
+  document.querySelectorAll('form').forEach(function (f) {
+    if (!f.querySelector('input[type=datetime-local]')) return;
+    f.addEventListener('submit', function () {
+      f.querySelectorAll('input[type=datetime-local]').forEach(function (i) {
+        var old = f.querySelector('input[name="' + i.name + '_utc"]'); if (old) old.remove();
+        var d = i.value ? new Date(i.value) : null; if (!d || isNaN(d)) return;
+        var h = document.createElement('input'); h.type = 'hidden'; h.name = i.name + '_utc'; h.value = d.toISOString(); f.appendChild(h);
+      });
+    });
+  });
+})();
+</script>
+{% if current_user.is_authenticated %}
+<script>
+/* Reminders: checks every minute for anything that just came due and shows it on screen. */
+(function () {
+  var box = document.createElement('div');
+  box.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:999;display:grid;gap:8px;max-width:340px';
+  document.body.appendChild(box);
+  function toast(r) {
+    var a = document.createElement('a'); a.href = r.url; a.textContent = r.text;
+    a.style.cssText = 'display:block;padding:12px 14px;border-radius:12px;background:var(--surface,#fff);border:1px solid var(--border,#ddd);box-shadow:0 8px 24px rgba(0,0,0,.18);color:var(--ink,#111);text-decoration:none;font-size:13.5px;line-height:1.45';
+    box.appendChild(a); setTimeout(function () { a.remove(); }, 15000);
+    try { if (window.Notification && Notification.permission === 'granted') new Notification('DROP reminder', { body: r.text }); } catch (e) {}
+  }
+  function poll() {
+    fetch('/api/reminders/poll', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d && d.reminders) d.reminders.forEach(toast); })
+      .catch(function () {});
+  }
+  window.dropEnableDesktopReminders = function () { if (window.Notification) Notification.requestPermission().then(function () { location.reload(); }); };
+  poll(); setInterval(poll, 60000);
+})();
+</script>
+{% endif %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

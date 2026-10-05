@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}{{ lesson.title }}{% endblock %}
+{% block page_title %}{{ classroom.name }}{% endblock %}
+{% block content %}
+
+<div id="study-timer" data-kind="lesson" data-id="{{ lesson.id }}" hidden></div>
+
+<a href="{{ url_for('student_classroom', classroom_id=classroom.id) }}" class="btn-drop-ghost" style="margin-bottom:16px; display:inline-flex;">← Back to classroom</a>
+
+<div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+  <div class="ai-avatar"><span class="mono" style="font-size:12px;">AI</span></div>
+  <div>
+    <h2 style="margin:0;">{{ lesson.title }}</h2>
+    {% if progress.completed %}<span class="pill pill-teal">{{ ic.icon('check', 12) }} Completed · {{ progress.quiz_score }}%</span>{% endif %}
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns:2fr 1fr; gap:22px;">
+  <div>
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Learning objectives</h5>
+        <ul style="padding-left:18px;">
+          {% for o in lesson.get_json('objectives') %}<li>{{ o|md_inline }}</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Lecture notes</h5>
+        <div class="md" style="font-size:14.5px; line-height:1.75;">{{ lesson.notes|md }}</div>
+      </div>
+    </div>
+
+    {% if lesson.get_json('definitions') %}
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Key definitions</h5>
+        {% for d in lesson.get_json('definitions') %}
+        <div class="pill pill-violet" style="display:block; margin-bottom:8px; white-space:normal; text-align:left;">{{ d|md_inline }}</div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Examples</h5>
+        <div class="md" style="font-size:14.5px; line-height:1.7;">{{ lesson.examples|md }}</div>
+      </div>
+    </div>
+
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Real-life applications</h5>
+        <div class="md" style="font-size:14.5px;">{{ lesson.applications|md }}</div>
+      </div>
+    </div>
+
+    {% if lesson.get_json('common_mistakes') %}
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Common mistakes</h5>
+        <ul style="padding-left:18px;">
+          {% for cm in lesson.get_json('common_mistakes') %}<li style="color:var(--red);">{{ cm|md_inline }}</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if lesson.get_json('practice') %}
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Practice</h5>
+        {% for p in lesson.get_json('practice') %}
+        <details style="margin-bottom:10px;">
+          <summary style="cursor:pointer; font-size:14px;">{{ p.question|md_inline }}</summary>
+          <p class="text-muted-drop" style="font-size:13.5px; margin-top:8px;">{{ p.answer|md_inline }}</p>
+        </details>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Revision</h5>
+        <div class="md" style="font-size:14.5px;">{{ lesson.revision|md }}</div>
+      </div>
+    </div>
+
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5>Summary</h5>
+        <div class="md" style="font-size:14.5px;">{{ lesson.summary|md }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    {% if lesson.get_json('homework') %}
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <h5 style="margin-top:0;">Homework</h5>
+        <ul style="padding-left:18px; margin:0;">
+          {% for h in lesson.get_json('homework') %}<li style="font-size:13.5px;">{{ h|md_inline }}</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card-drop">
+      <div class="card-body-drop">
+        <h5 style="margin-top:0;">Mini quiz</h5>
+        {% if progress.completed %}
+        <p class="pill pill-teal" style="display:inline-block;">Completed · {{ progress.quiz_score }}%</p>
+        {% else %}
+        <form method="POST" action="{{ url_for('student_lesson_quiz_submit', classroom_id=classroom.id, lesson_id=lesson.id) }}">
+          {% for q in lesson.get_json('quiz_json') %}
+          {% set qidx = loop.index0 %}
+          <div style="margin-bottom:16px;">
+            <div style="font-size:13.5px; font-weight:600; margin-bottom:8px;">{{ loop.index }}. {{ q.question|md_inline }}</div>
+            {% for opt in q.options %}
+            <label style="display:flex; align-items:center; gap:8px; font-size:13.5px; margin-bottom:6px;">
+              <input type="radio" name="q{{ qidx }}" value="{{ opt }}" style="accent-color:var(--violet);" required>
+              <span>{{ opt|md_inline }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          {% endfor %}
+          <button class="btn-drop-primary" type="submit" style="width:100%; justify-content:center;">Submit quiz</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    {# The "Ask about this lesson" box only appears AFTER the quiz is done, so the AI can't be used during the quiz. #}
+    {% if progress.completed %}
+    <div class="card-drop" style="margin-top:16px;">
+      <div class="card-body-drop">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+          <div class="ai-avatar" style="width:26px; height:26px; font-size:10px;">AI</div>
+          <h5 style="margin:0; font-size:14px;">Ask about this lesson</h5>
+        </div>
+        <div id="lesson-bot-window" style="max-height:220px; overflow-y:auto; margin-bottom:10px;">
+          <p class="text-muted-drop" id="lesson-bot-empty" style="font-size:12.5px; margin:4px 0;">
+            Stuck on something in "{{ lesson.title }}"? Ask here.
+          </p>
+        </div>
+        <form id="lesson-bot-form" data-lesson-title="{{ lesson.title }}" style="display:flex; gap:8px;">
+          <input class="form-control-drop" id="lesson-bot-input" type="text" placeholder="Ask a quick question…" autocomplete="off" required style="font-size:13px; padding:9px 12px;">
+          <button class="btn-drop-primary" id="lesson-bot-send" type="submit" style="padding:9px 14px;">Ask</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

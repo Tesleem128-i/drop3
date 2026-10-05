@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}Students &amp; Analytics{% endblock %}
+{% block page_title %}Students &amp; Analytics{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:22px;">
+  <h2 style="margin:0 0 4px;">Choose a classroom</h2>
+  <p class="text-muted-drop" style="margin:0;">See how each class is studying, where they struggle, and how every student is doing.</p>
+</div>
+
+{% if classrooms %}
+<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:18px;">
+  {% for c in classrooms %}
+  <div class="card-drop" style="padding:20px;">
+    <div class="gradient-bar" style="margin-bottom:14px; width:40px;"></div>
+    <h4 style="margin:0 0 4px;">{{ c.name }}</h4>
+    <p class="text-muted-drop" style="font-size:13.5px; margin-bottom:16px;">{{ c.subject }} · {{ c.student_count() }} students</p>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <a href="{{ url_for('teacher_classroom_analytics', classroom_id=c.id) }}" class="btn-drop-primary" style="padding:9px 14px; font-size:13.5px;">{{ ic.icon('chart', 15) }} Analytics</a>
+      <a href="{{ url_for('teacher_classroom_students', classroom_id=c.id) }}" class="btn-drop-secondary" style="padding:8px 14px; font-size:13.5px;">{{ ic.icon('users', 15) }} Students</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card-drop empty-state">
+  {{ ic.icon('book', 46) }}
+  <p>Create a classroom first — analytics appear once students join.</p>
+  <a href="{{ url_for('teacher_classroom_create') }}" class="btn-drop-primary" style="margin-top:8px;">{{ ic.icon('plus', 16) }} Create classroom</a>
+</div>
+{% endif %}
+{% endblock %}

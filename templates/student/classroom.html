@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}{{ classroom.name }}{% endblock %}
+{% block page_title %}{{ classroom.name }}{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:22px;">
+  <h2 style="margin:0 0 4px;">{{ classroom.name }}</h2>
+  <p class="text-muted-drop" style="margin:0 0 12px;">{{ classroom.subject }} · taught by {{ classroom.teacher.name }}</p>
+  <div class="progress-track" style="max-width:320px; margin-bottom:6px;"><div class="progress-fill" style="width:{{ enrollment.progress_percent }}%;"></div></div>
+  <span class="mono text-muted-drop" style="font-size:12.5px;">{{ enrollment.progress_percent }}% complete</span>
+</div>
+
+{% if classroom.ai_status == 'pending' %}
+<div class="card-drop" style="padding:40px; text-align:center;">
+  <div class="ai-avatar thinking" style="margin:0 auto 16px;"><span class="mono" style="font-size:12px;">AI</span></div>
+  <h4>Your teacher's course is still being generated</h4>
+  <p class="text-muted-drop">Check back shortly.</p>
+</div>
+{% else %}
+{% for week in classroom.weeks %}
+<div class="card-drop" style="margin-bottom:14px;">
+  <div class="card-body-drop">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+      <h5 style="margin:0;">Week {{ week.number }}: {{ week.title }}</h5>
+    </div>
+    <p class="text-muted-drop" style="font-size:13.5px; margin-bottom:14px;">{{ week.summary }}</p>
+    <div style="display:grid; gap:8px;">
+      {% for lesson in week.lessons %}
+      <a href="{{ url_for('student_lesson', classroom_id=classroom.id, lesson_id=lesson.id) }}" style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border:1px solid var(--border); border-radius:12px; text-decoration:none; color:var(--ink);">
+        <span style="font-size:14px;">{{ lesson.title }}</span>
+        {{ ic.icon('arrow-right', 15) }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

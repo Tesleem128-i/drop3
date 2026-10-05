@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}{{ student.name }}{% endblock %}
+{% block page_title %}{{ student.name }}{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('teacher_classroom_students', classroom_id=classroom.id) }}" class="btn-drop-ghost" style="margin-bottom:16px; display:inline-flex;">← Back to students</a>
+
+<div style="display:grid; grid-template-columns:minmax(260px,1fr) 2.2fr; gap:22px; align-items:start;" class="sd-grid">
+
+  {# ---------------- left column: identity + numbers ---------------- #}
+  <div>
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop" style="text-align:center;">
+        <div class="ai-avatar mono" style="width:56px;height:56px;font-size:20px; margin:0 auto 12px;">{{ student.name[0]|upper }}</div>
+        <h4 style="margin:0 0 2px;">{{ student.name }}</h4>
+        <p class="text-muted-drop" style="font-size:13px;">{{ student.email }}</p>
+        <div style="display:flex; justify-content:center; gap:8px; margin-top:12px; flex-wrap:wrap;">
+          <span class="pill {{ 'pill-red' if enrollment.risk_level=='high' else ('pill-amber' if enrollment.risk_level=='medium' else 'pill-teal') }}">{{ enrollment.risk_level }} risk</span>
+          <span class="pill pill-violet">Lvl {{ student.level }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-drop" style="margin-bottom:16px;">
+      <div class="card-body-drop">
+        <div class="stat-label" style="margin-bottom:4px;">Course progress</div>
+        <div class="progress-track" style="margin-bottom:6px;"><div class="progress-fill" style="width:{{ enrollment.progress_percent }}%;"></div></div>
+        <div class="mono" style="font-size:13px; margin-bottom:16px;">{{ enrollment.progress_percent }}% complete · {{ stats.completed_lessons }} lessons done</div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          <div><div class="stat-label">Average score</div><div class="stat-value" style="font-size:24px;">{{ (avg_score|round|int ~ '%') if avg_score is not none else '—' }}</div></div>
+          <div><div class="stat-label">Predicted grade</div><div class="stat-value" style="font-size:24px;">{{ enrollment.predicted_grade or '—' }}</div></div>
+          <div><div class="stat-label">Study time</div><div class="stat-value" style="font-size:24px;">{{ stats.total_minutes|round|int }}<span style="font-size:13px; color:var(--muted);"> min</span></div></div>
+          <div><div class="stat-label">Answer accuracy</div><div class="stat-value" style="font-size:24px;">{{ (stats.accuracy|round|int ~ '%') if stats.accuracy is not none else '—' }}</div></div>
+        </div>
+        <hr class="divider">
+        <div style="display:grid; gap:9px; font-size:13.5px;">
+          <div style="display:flex; justify-content:space-between;"><span class="text-muted-drop">Active days</span><strong class="mono">{{ stats.active_days }}</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span class="text-muted-drop">Avg session</span><strong class="mono">{{ stats.avg_session_minutes }} min</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span class="text-muted-drop">Last active</span><strong class="mono">{{ (stats.days_inactive ~ 'd ago') if stats.days_inactive is not none else 'never' }}</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span class="text-muted-drop">Missing work</span><strong class="mono" style="color:{{ 'var(--red)' if stats.missing_assignments else 'inherit' }};">{{ stats.missing_assignments }}</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span class="text-muted-drop">Recent trend</span>
+            <strong class="mono">{% if stats.trend_delta is none %}—{% elif stats.trend_delta >= 0 %}<span class="trend-up">▲ {{ stats.trend_delta }}</span>{% else %}<span class="trend-down">▼ {{ stats.trend_delta|abs }}</span>{% endif %}</strong></div>
+        </div>
+      </div>
+    </div>
+
+    {% if profile %}
+    <div class="card-drop">
+      <div class="card-body-drop">
+        <h5 style="margin-top:0;">Learning profile</h5>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+          <div><div class="stat-label">Learning speed</div><div style="font-weight:600;">{{ profile.learning_speed|capitalize }}</div></div>
+          <div><div class="stat-label">Attention span</div><div style="font-weight:600;">{{ profile.attention_span|capitalize }}</div></div>
+          <div><div class="stat-label">Right difficulty</div><div style="font-weight:600;">{{ profile.preferred_difficulty|capitalize }}</div></div>
+          <div><div class="stat-label">Confidence</div><div style="font-weight:600;">{{ profile.confidence }}/100</div></div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ---------------- right column ---------------- #}
+  <div>
+    {# AI analysis #}
+    <div class="ai-note" style="margin-bottom:20px;">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+        <div class="ai-avatar" style="width:30px; height:30px;"><span class="mono" style="font-size:10px;">AI</span></div>
+        <h4 style="margin:0;">AI analysis of {{ student.name.split(' ')[0] }}</h4>
+        {% if insight_row %}
+        <span class="src-badge">{{ 'AI-written' if insight_row.source == 'ai' else 'Rules-based' }}</span>
+        <span class="src-badge">Updated {{ insight_row.updated_at.strftime('%b %d, %I:%M %p') }}</span>
+        {% endif %}
+        <form method="POST" action="{{ url_for('teacher_student_analyze', classroom_id=classroom.id, student_id=student.id) }}" style="margin-left:auto;">
+          <button class="btn-drop-secondary" type="submit" style="padding:7px 13px; font-size:13px;">{{ ic.icon('refresh-cw', 13) }} Refresh</button>
+        </form>
+      </div>
+
+      {% if insight %}
+      <p style="font-size:15px; margin-bottom:16px;">{{ insight.get('summary') }}</p>
+      <div class="grid-2" style="margin-bottom:14px;">
+        <div class="insight-col">
+          <h5>{{ ic.icon('thumbs-up', 16) }} Strengths</h5>
+          {% for s in insight.get('strengths', []) %}<div class="insight-item good"><strong>{{ s.topic }}</strong>{{ s.note }}</div>
+          {% else %}<p class="text-muted-drop" style="font-size:13px;">Not enough data yet.</p>{% endfor %}
+        </div>
+        <div class="insight-col">
+          <h5>{{ ic.icon('alert-triangle', 16) }} Weaknesses</h5>
+          {% for w in insight.get('weaknesses', []) %}<div class="insight-item bad"><strong>{{ w.topic }}</strong>{{ w.note }}{% if w.fix %}<span class="fix">→ {{ w.fix }}</span>{% endif %}</div>
+          {% else %}<p class="text-muted-drop" style="font-size:13px;">No clear weak spots.</p>{% endfor %}
+        </div>
+      </div>
+      {% if insight.get('study_habits') %}<div class="callout" style="margin-bottom:14px;"><strong>Study habits:</strong> {{ insight.study_habits }}</div>{% endif %}
+      <div class="insight-col">
+        <h5>{{ ic.icon('target', 16) }} How you can help</h5>
+        <ul class="action-list">{% for a in insight.get('teacher_actions', []) %}<li>{{ a }}</li>{% endfor %}</ul>
+      </div>
+      {% else %}
+      <p class="text-muted-drop" style="margin:0;">No analysis yet — it is written automatically once {{ student.name.split(' ')[0] }} has studied a lesson or answered some questions.</p>
+      {% endif %}
+    </div>
+
+    {# charts #}
+    <div class="grid-2" style="margin-bottom:20px;">
+      <div class="card-drop chart-card"><div class="card-body-drop">
+        <h4 class="chart-title">{{ ic.icon('trending-up', 17) }} Score trend</h4>
+        <p class="chart-sub">Every graded quiz and assessment, in order.</p>
+        <div class="chart-box short"><canvas id="ch-trend"></canvas></div>
+      </div></div>
+      <div class="card-drop chart-card"><div class="card-body-drop">
+        <h4 class="chart-title">{{ ic.icon('clock', 17) }} Study time vs. score</h4>
+        <p class="chart-sub">Weekly study minutes (bars) and average score (line).</p>
+        <div class="chart-box short"><canvas id="ch-weekly"></canvas></div>
+      </div></div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:20px;">
+      <div class="card-drop chart-card"><div class="card-body-drop">
+        <h4 class="chart-title">{{ ic.icon('book', 17) }} Time per lesson vs. quiz result</h4>
+        <p class="chart-sub">Where time goes and whether it pays off.</p>
+        <div class="chart-box short"><canvas id="ch-lessons"></canvas></div>
+      </div></div>
+      <div class="card-drop chart-card"><div class="card-body-drop">
+        <h4 class="chart-title">Types of mistakes</h4>
+        <p class="chart-sub">Why this student loses marks.</p>
+        <div class="chart-box short"><canvas id="ch-mistakes"></canvas></div>
+      </div></div>
+    </div>
+
+    <div class="card-drop" style="margin-bottom:20px;"><div class="card-body-drop">
+      <h4 class="chart-title">Accuracy by topic</h4>
+      <p class="chart-sub">Strongest to weakest across everything answered in this class.</p>
+      {% for t in stats.topics|sort(attribute='accuracy', reverse=True) %}
+      <div class="topic-row">
+        <div><div class="name">{{ t.topic }}</div><div class="meta">{{ t.correct }} of {{ t.attempts }} correct</div></div>
+        <div class="bar-mini"><span class="{{ 'acc-good' if t.accuracy >= 80 else ('acc-mid' if t.accuracy >= 60 else 'acc-bad') }}" style="width:{{ t.accuracy }}%;"></span></div>
+        <div class="mono" style="text-align:right;">{{ t.accuracy|round|int }}%</div>
+      </div>
+      {% else %}<p class="text-muted-drop" style="font-size:13.5px; margin:0;">No answered questions yet.</p>{% endfor %}
+    </div></div>
+
+    <div class="card-drop">
+      <div class="card-body-drop" style="padding-bottom:6px;"><h4 style="margin:0;">Recent submissions</h4></div>
+      {% if submissions %}
+      <div class="table-scroll">
+      <table class="table-drop">
+        <thead><tr><th>Assignment</th><th>Score</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>
+        {% for s in submissions %}
+        <tr>
+          <td>{{ s.assignment.title }}</td>
+          <td class="mono">{{ s.score if s.score is not none else '—' }}</td>
+          <td><span class="pill {{ 'pill-teal' if s.status=='graded' else 'pill-amber' }}">{{ s.status }}</span></td>
+          <td class="text-muted-drop">{{ s.submitted_at.strftime('%b %d') }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}
+      <p class="text-muted-drop" style="font-size:13.5px; padding:0 22px 22px; margin:0;">No submissions yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script id="st-data" type="application/json">{{ stats|tojson }}</script>
+<style>@media (max-width:1000px){ .sd-grid{ grid-template-columns:1fr !important; } }</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+(function () {
+  var st = JSON.parse(document.getElementById("st-data").textContent), C = window.DROPCharts;
+  var tr = st.score_trend;
+  C.line("ch-trend", tr.map(function (t) { return t.date; }), tr.map(function (t) { return t.score; }), "Score %", tr.map(function (t) { return t.label; }));
+  var wk = st.weekly;
+  C.timeVsScore("ch-weekly", wk.map(function (w) { return w.week; }), wk.map(function (w) { return w.minutes; }), wk.map(function (w) { return w.score; }), "Study minutes");
+  var ls = st.lessons;
+  C.lessonTimeVsScore("ch-lessons", ls.map(function (l) { return l.title.slice(0, 26); }), ls.map(function (l) { return l.minutes; }), ls.map(function (l) { return l.quiz_score; }));
+  C.doughnut("ch-mistakes", st.misconceptions.map(function (x) { return x.label; }), st.misconceptions.map(function (x) { return x.count; }));
+})();
+</script>
+{% endblock %}

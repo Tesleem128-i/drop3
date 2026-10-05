@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}Create classroom{% endblock %}
+{% block page_title %}Create classroom{% endblock %}
+{% block content %}
+
+<div style="max-width:640px; margin:0 auto;">
+  <div class="card-drop">
+    <div class="card-body-drop">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+        <div class="ai-avatar"><span class="mono" style="font-size:12px;">AI</span></div>
+        <h3 style="margin:0;">Let AI build your course</h3>
+      </div>
+      <p class="text-muted-drop" style="margin-bottom:22px;">Give DROP the basics. The AI will generate the full curriculum — weeks, lessons, assignments, tests, and a final exam — automatically.</p>
+
+      <form method="POST" enctype="multipart/form-data" id="create-form">
+        <div style="margin-bottom:16px;">
+          <label class="form-label-drop">Classroom name</label>
+          <input class="form-control-drop" type="text" name="name" placeholder="e.g. Algebra II — Fall Cohort" required>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px;">
+          <div>
+            <label class="form-label-drop">Subject</label>
+            <input class="form-control-drop" type="text" name="subject" placeholder="e.g. Algebra II" required>
+          </div>
+          <div>
+            <label class="form-label-drop">Target grade / level</label>
+            <input class="form-control-drop" type="text" name="target_grade" placeholder="e.g. Grade 10">
+          </div>
+        </div>
+        <div style="margin-bottom:16px;">
+          <label class="form-label-drop">Duration (weeks)</label>
+          <input class="form-control-drop" type="number" name="duration_weeks" value="8" min="1" max="20" required>
+        </div>
+        <div style="margin-bottom:24px;">
+          <label class="form-label-drop">Syllabus (optional)</label>
+          <input class="form-control-drop" type="file" name="syllabus" accept=".pdf,.docx,.txt,.md">
+          <div class="form-hint">{{ ic.icon('upload', 12) }} Upload a syllabus and the AI will align the course to it.</div>
+        </div>
+        <button class="btn-drop-primary" type="submit" id="create-btn" style="width:100%; justify-content:center;">
+          {{ ic.icon('sparkles', 16) }} Create &amp; generate course
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('create-form').addEventListener('submit', function() {
+  var btn = document.getElementById('create-btn');
+  btn.disabled = true;
+  btn.innerHTML = 'Building your course…';
+});
+</script>
+{% endblock %}

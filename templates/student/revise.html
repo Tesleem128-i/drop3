@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}Revision{% endblock %}
+{% block content %}
+
+<a href="{{ back_url }}" class="btn-drop-ghost" style="margin-bottom:16px; display:inline-flex;">← Back</a>
+
+<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:18px;">
+  <div>
+    <h2 style="margin:0 0 4px;">{{ title }}</h2>
+    <p class="text-muted-drop" style="margin:0;">{{ note }}</p>
+  </div>
+  <a href="{{ tutor_url }}" class="btn-drop-secondary">{{ ic.icon('zap', 15) }} Ask the AI tutor</a>
+</div>
+
+{% if weak %}
+<div class="card-drop" style="margin-bottom:18px;"><div class="card-body-drop">
+  <h5 style="margin-top:0;">{{ ic.icon('target', 15) }} Your weak spots — start here</h5>
+  <div style="display:flex; flex-wrap:wrap; gap:8px;">{% for t in weak %}<span class="pill pill-red">{{ t }}</span>{% endfor %}</div>
+</div></div>
+{% endif %}
+
+{% for s in sections %}
+<details class="card-drop" style="margin-bottom:12px;" {% if loop.first %}open{% endif %}>
+  <summary style="cursor:pointer; padding:16px 20px; font-weight:600; display:flex; justify-content:space-between; gap:10px;">
+    <span>{{ s.title }}</span><span class="text-muted-drop" style="font-weight:400; font-size:12.5px;">{{ s.week }}</span>
+  </summary>
+  <div class="card-body-drop" style="display:grid; gap:16px; font-size:14px;">
+    {% if s.objectives %}<div><h5 style="margin:0 0 6px;">What to know</h5><ul style="margin:0; padding-left:20px;">{% for o in s.objectives %}<li>{{ o|md_inline }}</li>{% endfor %}</ul></div>{% endif %}
+    {% if s.definitions %}<div><h5 style="margin:0 0 6px;">Key terms</h5>{% for d in s.definitions %}<div class="pill pill-violet" style="display:block; white-space:normal; text-align:left; margin-bottom:6px;">{{ d|md_inline }}</div>{% endfor %}</div>{% endif %}
+    {% if s.revision %}<div><h5 style="margin:0 0 6px;">Revision notes</h5><div class="md" style="line-height:1.7;">{{ s.revision|md }}</div></div>{% endif %}
+    {% if s.summary %}<div><h5 style="margin:0 0 6px;">Summary</h5><div class="md" style="line-height:1.7;">{{ s.summary|md }}</div></div>{% endif %}
+    {% if s.common_mistakes %}<div><h5 style="margin:0 0 6px;">Mistakes to avoid</h5><ul style="margin:0; padding-left:20px;">{% for c in s.common_mistakes %}<li style="color:var(--red);">{{ c|md_inline }}</li>{% endfor %}</ul></div>{% endif %}
+    {% if s.practice %}<div><h5 style="margin:0 0 6px;">Practice — try before you peek</h5>
+      {% for p in s.practice %}<details style="margin-bottom:8px;"><summary style="cursor:pointer;">{{ p.question|md_inline }}</summary>
+        <p class="text-muted-drop" style="margin:8px 0 0;">{{ p.answer|md_inline }}</p></details>{% endfor %}</div>{% endif %}
+  </div>
+</details>
+{% else %}
+<div class="card-drop empty-state"><p>No lessons have been generated yet, so there is nothing to revise. Check back once your teacher releases the material.</p></div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}Progress{% endblock %}
+{% block page_title %}Progress{% endblock %}
+{% block content %}
+
+<div class="kpi-grid">
+  <div class="card-drop stat-card"><div class="stat-value">{{ current_user.xp }}</div><div class="stat-label">Total XP</div></div>
+  <div class="card-drop stat-card"><div class="stat-value">{{ current_user.level }}</div><div class="stat-label">Level</div></div>
+  <div class="card-drop stat-card"><div class="stat-value">{{ stats.total_minutes|round|int }}<span style="font-size:14px; color:var(--muted);"> min</span></div><div class="stat-label">Time studied</div></div>
+  <div class="card-drop stat-card"><div class="stat-value">{{ (stats.accuracy|round|int ~ '%') if stats.accuracy is not none else '—' }}</div><div class="stat-label">Answer accuracy</div></div>
+  <div class="card-drop stat-card"><div class="stat-value">{{ stats.active_days }}</div><div class="stat-label">Days studied</div></div>
+  <div class="card-drop stat-card"><div class="stat-value">{{ current_user.streak_days }}</div><div class="stat-label">Day streak</div></div>
+</div>
+
+{# ------------- AI coach ------------- #}
+<div class="ai-note" style="margin-bottom:22px;">
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+    <div class="ai-avatar" style="width:30px; height:30px;"><span class="mono" style="font-size:10px;">AI</span></div>
+    <h4 style="margin:0;">Your AI coach</h4>
+    {% if coach_row %}<span class="src-badge">Updated {{ coach_row.updated_at.strftime('%b %d, %I:%M %p') }}</span>{% endif %}
+    <form method="POST" action="{{ url_for('student_coach_refresh') }}" style="margin-left:auto;">
+      <button class="btn-drop-primary" type="submit" style="padding:8px 14px; font-size:13.5px;">{{ ic.icon('sparkles', 14) }} {{ 'Update my notes' if coach else 'Get my coaching notes' }}</button>
+    </form>
+  </div>
+  {% if coach %}
+  <p style="font-size:15px; margin-bottom:16px;">{{ coach.get('summary') }}</p>
+  <div class="grid-2" style="margin-bottom:14px;">
+    <div class="insight-col">
+      <h5>{{ ic.icon('thumbs-up', 16) }} You're strong at</h5>
+      {% for s in coach.get('strengths', []) %}<div class="insight-item good"><strong>{{ s.topic }}</strong>{{ s.note }}</div>
+      {% else %}<p class="text-muted-drop" style="font-size:13px;">Keep answering questions — strengths show up here.</p>{% endfor %}
+    </div>
+    <div class="insight-col">
+      <h5>{{ ic.icon('target', 16) }} Work on these</h5>
+      {% for w in coach.get('weaknesses', []) %}<div class="insight-item bad"><strong>{{ w.topic }}</strong>{{ w.note }}{% if w.fix %}<span class="fix">→ {{ w.fix }}</span>{% endif %}</div>
+      {% else %}<p class="text-muted-drop" style="font-size:13px;">Nothing flagged — nice work.</p>{% endfor %}
+    </div>
+  </div>
+  <div class="insight-col">
+    <h5>{{ ic.icon('zap', 16) }} Your next steps</h5>
+    <ul class="action-list">{% for r in coach.get('recommendations', []) %}<li>{{ r }}</li>{% endfor %}</ul>
+  </div>
+  {% else %}
+  <p class="text-muted-drop" style="margin:0;">Study a lesson or take a quiz, then tap the button — your coach will point out what you're good at and exactly what to practise next.</p>
+  {% endif %}
+</div>
+
+<div class="grid-2" style="margin-bottom:22px;">
+  <div class="card-drop chart-card"><div class="card-body-drop">
+    <h4 class="chart-title">{{ ic.icon('trending-up', 17) }} Your scores over time</h4>
+    <p class="chart-sub">Every graded quiz and assessment.</p>
+    <div class="chart-box short"><canvas id="ch-trend"></canvas></div>
+  </div></div>
+  <div class="card-drop chart-card"><div class="card-body-drop">
+    <h4 class="chart-title">{{ ic.icon('clock', 17) }} Does studying more help you?</h4>
+    <p class="chart-sub">Weekly study minutes (bars) and your average score (line).</p>
+    <div class="chart-box short"><canvas id="ch-weekly"></canvas></div>
+  </div></div>
+</div>
+
+<div class="card-drop" style="margin-bottom:22px;"><div class="card-body-drop">
+  <h4 class="chart-title">Your accuracy by topic</h4>
+  <p class="chart-sub">Strongest first. Under {{ 60 }}% means it needs more practice.</p>
+  {% for t in stats.topics|sort(attribute='accuracy', reverse=True) %}
+  <div class="topic-row">
+    <div><div class="name">{{ t.topic }}</div><div class="meta">{{ t.correct }} of {{ t.attempts }} correct</div></div>
+    <div class="bar-mini"><span class="{{ 'acc-good' if t.accuracy >= 80 else ('acc-mid' if t.accuracy >= 60 else 'acc-bad') }}" style="width:{{ t.accuracy }}%;"></span></div>
+    <div class="mono" style="text-align:right;">{{ t.accuracy|round|int }}%</div>
+  </div>
+  {% else %}<p class="text-muted-drop" style="font-size:13.5px; margin:0;">Answer a few questions and your topic breakdown appears here.</p>{% endfor %}
+</div></div>
+
+<div class="grid-2">
+  <div>
+    <h4 style="margin-bottom:14px;">Classroom progress</h4>
+    <div class="card-drop">
+      {% for e in enrollments %}
+      <div style="padding:14px 18px; border-bottom:1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-size:13.5px; font-weight:600;">{{ e.classroom.name }}</span>
+          <span class="mono">{{ e.progress_percent }}%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:{{ e.progress_percent }}%;"></div></div>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:30px;"><p style="font-size:13px;">Join a classroom to track progress.</p></div>
+      {% endfor %}
+    </div>
+  </div>
+  <div>
+    <h4 style="margin-bottom:14px;">Score history</h4>
+    <div class="card-drop">
+      {% for s in submissions[-8:]|reverse %}
+      <div style="display:flex; justify-content:space-between; padding:12px 18px; border-bottom:1px solid var(--border); font-size:13.5px;">
+        <span>{{ s.assignment.title }}</span>
+        <span class="pill {{ 'pill-teal' if s.status=='graded' else 'pill-amber' }}">{{ s.score if s.score is not none else '—' }}{{ '%' if s.score is not none }}</span>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:30px;"><p style="font-size:13px;">No graded work yet.</p></div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script id="st-data" type="application/json">{{ stats|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+(function () {
+  var st = JSON.parse(document.getElementById("st-data").textContent), C = window.DROPCharts;
+  var tr = st.score_trend;
+  C.line("ch-trend", tr.map(function (t) { return t.date; }), tr.map(function (t) { return t.score; }), "Score %", tr.map(function (t) { return t.label; }));
+  var wk = st.weekly;
+  C.timeVsScore("ch-weekly", wk.map(function (w) { return w.week; }), wk.map(function (w) { return w.minutes; }), wk.map(function (w) { return w.score; }), "Study minutes");
+})();
+</script>
+{% endblock %}

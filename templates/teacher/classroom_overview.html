@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% import "teacher/_tabs.html" as tabs %}
+{% import "shared/_time.html" as tm %}
+{% block title %}{{ classroom.name }}{% endblock %}
+{% block page_title %}{{ classroom.name }}{% endblock %}
+{% block content %}
+
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; flex-wrap:wrap; gap:12px;">
+  <div>
+    <h2 style="margin:0 0 4px;">{{ classroom.name }}</h2>
+    <p class="text-muted-drop" style="margin:0;">{{ classroom.subject }} · {{ classroom.duration_weeks }} weeks · {{ classroom.target_grade or 'General level' }}</p>
+  </div>
+  <div style="text-align:right;">
+    <div class="form-hint" style="margin-bottom:4px;">Join code — share with students</div>
+    <span class="join-code-badge" data-copy="{{ classroom.join_code }}" title="Click to copy">{{ classroom.join_code }}</span>
+  </div>
+</div>
+
+{{ tabs.classroom_tabs(classroom, 'overview') }}
+
+{% if classroom.ai_status == 'pending' %}
+<div class="card-drop" style="padding:40px; text-align:center;">
+  <div class="ai-avatar thinking" style="margin:0 auto 16px;"><span class="mono" style="font-size:12px;">AI</span></div>
+  <h4>Your course outline is being built…</h4>
+  <p class="text-muted-drop">Refresh this page in a moment.</p>
+</div>
+{% else %}
+
+<div class="card-drop" style="padding:14px 18px; margin-bottom:20px; display:flex; align-items:center; gap:12px;">
+  <div class="ai-avatar" style="width:30px; height:30px; flex-shrink:0;"><span class="mono" style="font-size:11px;">AI</span></div>
+  <p class="text-muted-drop" style="margin:0; font-size:13.5px;">
+    Your outline is ready. Lessons, tests and exams are <strong style="color:var(--ink);">not</strong> written until you press
+    <em>Generate</em> on them — do one week at a time, and students only see what you've generated.
+  </p>
+</div>
+
+<div style="display:grid; grid-template-columns:2fr 1fr; gap:22px;">
+  <div>
+    <h4 style="margin-bottom:14px;">Curriculum</h4>
+    {% for week in classroom.weeks %}
+    {% set total = week.lessons|length %}
+    {% set done = week.generated_count() %}
+    {% set test = week_tests.get('Week ' ~ week.number ~ ' Test') %}
+    <div class="card-drop" style="margin-bottom:14px;">
+      <div class="card-body-drop">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:10px;">
+          <h5 style="margin:0;">Week {{ week.number }}: {{ week.title }}</h5>
+          {% if total and done == total %}<span class="pill pill-teal">{{ ic.icon('check', 12) }} Generated</span>
+          {% elif done %}<span class="pill pill-amber">{{ done }} of {{ total }} lessons</span>
+          {% else %}<span class="pill pill-muted">Not generated</span>{% endif %}
+        </div>
+        <p class="text-muted-drop" style="font-size:13.5px; margin-bottom:12px;">{{ week.summary }}</p>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+          {% for lesson in week.lessons %}
+          <span class="pill {{ 'pill-violet' if lesson.is_generated() else 'pill-muted' }}">{{ lesson.title }}</span>
+          {% endfor %}
+        </div>
+
+        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+          {% if done < total %}
+          <form method="POST" action="{{ url_for('teacher_week_generate', classroom_id=classroom.id, week_id=week.id) }}" data-generate>
+            <button class="btn-drop-primary" type="submit" style="font-size:13px; padding:8px 14px;">
+              {{ ic.icon('sparkles', 14) }} {{ 'Generate remaining lessons' if done else 'Generate this week' }}
+            </button>
+          </form>
+          {% endif %}
+
+
+          {% if total and done == total %}
+          <form method="POST" action="{{ url_for('teacher_week_generate', classroom_id=classroom.id, week_id=week.id) }}" data-generate
+                onsubmit="return confirm('Rewrite this week\'s lessons with fuller explanations? Existing lesson text will be replaced.');">
+            <input type="hidden" name="redo" value="1">
+            <button class="btn-drop-ghost" type="submit" style="font-size:13px;">{{ ic.icon('refresh', 14) }} Regenerate in detail</button>
+          </form>
+          {% endif %}
+
+          {% if done %}
+            {% if test and test.has_questions() %}
+            <a href="{{ url_for('teacher_assignment_submissions', assignment_id=test.id) }}" class="btn-drop-ghost">
+              {{ ic.icon('check-circle', 14) }} Week test ready · {{ test.questions()|length }} questions
+            </a>
+            <a href="{{ url_for('teacher_assignment_schedule', assignment_id=test.id) }}" class="btn-drop-ghost">
+              {{ ic.icon('clock', 14) }} {% if test.start_at or test.due_date %}{{ tm.t(test.start_at or test.due_date) }}{% else %}Set date &amp; time{% endif %}
+            </a>
+            {% else %}
+            <form method="POST" action="{{ url_for('teacher_week_test_generate', classroom_id=classroom.id, week_id=week.id) }}" data-generate>
+              <button class="btn-drop-secondary" type="submit" style="font-size:13px; padding:8px 14px;">
+                {{ ic.icon('target', 14) }} Generate week test
+              </button>
+            </form>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="card-drop empty-state"><p>No outline yet — the AI couldn't build one. Try creating the classroom again.</p></div>
+    {% endfor %}
+  </div>
+
+  <div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h4 style="margin:0;">Classwork &amp; assignments</h4>
+      <a href="{{ url_for('teacher_assignment_create', classroom_id=classroom.id) }}" class="btn-drop-ghost">{{ ic.icon('plus', 14) }} New</a>
+    </div>
+    {% for a in classroom.assignments if a.kind not in ('weekly_test', 'midterm', 'final_exam') %}
+    <a href="{{ url_for('teacher_assignment_submissions', assignment_id=a.id) }}" class="card-drop hoverable" style="display:block; padding:14px 16px; margin-bottom:10px; text-decoration:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div>
+          <div style="font-weight:600; font-size:14px; color:var(--ink);">{{ a.title }}</div>
+          <div style="font-size:12px; color:var(--muted);">
+            {{ a.kind.replace('_',' ')|capitalize }} ·
+            {% if a.has_questions() %}{{ a.submissions|length }} submitted{% else %}questions not generated{% endif %}
+            {% if a.start_at %} · opens {{ tm.t(a.start_at, 'date') }}{% endif %}{% if a.due_date %} · due {{ tm.t(a.due_date, 'date') }}{% endif %}
+            {% if a.is_secure() %} · secure{% endif %}
+          </div>
+        </div>
+        {% if a.has_questions() %}<span class="pill pill-muted">{{ ic.icon('arrow-right', 12) }}</span>
+        {% else %}<span class="pill pill-amber">Generate</span>{% endif %}
+      </div>
+    </a>
+    {% else %}
+    <div class="card-drop empty-state" style="padding:30px;"><p style="font-size:13px;">Nothing yet.</p></div>
+    {% endfor %}
+
+    <h4 style="margin:26px 0 14px;">Exams</h4>
+    {% for kind, label in (('midterm', 'Midterm exam'), ('final_exam', 'Final exam')) %}
+    {% set ex = exams.get(kind) %}
+    <div class="card-drop" style="padding:14px 16px; margin-bottom:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:{{ '0' if (ex and ex.has_questions()) else '10px' }};">
+        <div style="font-weight:600; font-size:14px;">{{ label }}</div>
+        {% if ex and ex.has_questions() %}
+        <a href="{{ url_for('teacher_assignment_submissions', assignment_id=ex.id) }}" class="pill pill-teal" style="text-decoration:none;">Ready · {{ ex.questions()|length }} questions</a>
+        {% else %}<span class="pill pill-muted">Not generated</span>{% endif %}
+      </div>
+      {% if ex and ex.has_questions() %}
+      <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12.5px;">
+        <span class="text-muted-drop">{% if ex.start_at %}Opens {{ tm.t(ex.start_at) }}{% elif ex.due_date %}Closes {{ tm.t(ex.due_date) }}{% else %}Not scheduled{% endif %}</span>
+        <a href="{{ url_for('teacher_assignment_schedule', assignment_id=ex.id) }}" class="btn-drop-ghost" style="padding:4px 10px; font-size:12.5px;">{{ ic.icon('clock', 12) }} Schedule</a>
+      </div>
+      {% endif %}
+      {% if not (ex and ex.has_questions()) %}
+        {% if any_ready %}
+        <form method="POST" action="{{ url_for('teacher_exam_generate', classroom_id=classroom.id, kind=kind) }}" data-generate>
+          <button class="btn-drop-secondary" type="submit" style="width:100%; justify-content:center; font-size:13px; padding:8px 14px;">
+            {{ ic.icon('sparkles', 14) }} Generate {{ label|lower }}
+          </button>
+        </form>
+        <div class="form-hint" style="margin-top:6px;">
+          {% if kind == 'midterm' %}Built from the first half of the weeks you've generated.{% else %}Built from every week you've generated so far.{% endif %}
+        </div>
+        {% else %}
+        <div class="form-hint">Generate a week of lessons first — exams are built from them.</div>
+        {% endif %}
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<script>
+/* Generate buttons: show progress and stop double-clicks (a week can take a minute). */
+document.querySelectorAll('form[data-generate]').forEach(function (f) {
+  f.addEventListener('submit', function () {
+    document.querySelectorAll('form[data-generate] button').forEach(function (b) { b.disabled = true; });
+    var b = f.querySelector('button');
+    if (b) b.innerHTML = 'Generating… this can take a minute';
+  });
+});
+</script>
+{% endblock %}

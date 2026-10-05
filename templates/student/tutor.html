@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}AI Tutor{% endblock %}
+{% block page_title %}AI Tutor{% endblock %}
+{% block content %}
+
+<div class="card-drop" style="max-width:820px; margin:0 auto;">
+  <div class="card-body-drop">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+      <div class="ai-avatar"><span class="mono" style="font-size:12px;">AI</span></div>
+      <div>
+        <h4 style="margin:0;">DROP AI Tutor</h4>
+        <p class="text-muted-drop" style="margin:0; font-size:12.5px;">Ask anything. The AI explains, quizzes, and adapts to how you learn.</p>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+      <button type="button" class="mode-chip active" data-mode="default">Default</button>
+      <button type="button" class="mode-chip" data-mode="simplify">Simplify</button>
+      <button type="button" class="mode-chip" data-mode="eli10">Explain like I'm 10</button>
+      <button type="button" class="mode-chip" data-mode="visual">Visual</button>
+      <button type="button" class="mode-chip" data-mode="math">Mathematical</button>
+      <button type="button" class="mode-chip" data-mode="examples">More examples</button>
+    </div>
+
+    <div class="chat-window" id="chat-window">
+      {% if not history %}
+      <div class="empty-state" style="padding:40px 20px;">
+        {{ ic.icon('zap', 36) }}
+        <p style="font-size:13.5px;">Ask your first question — try "explain photosynthesis like I'm 10".</p>
+      </div>
+      {% endif %}
+      {% for msg in history %}
+      <div class="chat-row {{ msg.role }}">
+        {% if msg.role == 'assistant' %}<div class="ai-avatar" style="width:30px;height:30px;font-size:12px;">AI</div>{% endif %}
+        <div class="chat-bubble {{ msg.role }}">{{ msg.content|plain if msg.role == 'assistant' else msg.content }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <form id="tutor-form" style="display:flex; gap:10px; margin-top:14px;">
+      <input class="form-control-drop" id="tutor-input" type="text" placeholder="Ask the AI tutor anything…" autocomplete="off" required>
+      <button class="btn-drop-primary" id="tutor-send" type="submit">Send</button>
+    </form>
+  </div>
+</div>
+<script>
+  document.getElementById('chat-window').scrollTop = document.getElementById('chat-window').scrollHeight;
+</script>
+{% endblock %}

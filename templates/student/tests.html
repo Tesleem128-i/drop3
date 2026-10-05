@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% import "shared/_time.html" as tm %}
+{% block title %}Tests &amp; Exams{% endblock %}
+{% block page_title %}Tests &amp; Exams{% endblock %}
+{% block content %}
+
+<div class="card-drop">
+  {% if tests %}
+  <table class="table-drop">
+    <thead><tr><th>Title</th><th>Type</th><th>Opens</th><th>Closes</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for t in tests %}
+    <tr>
+      <td>{{ t.title }}</td>
+      <td class="text-muted-drop">{{ t.kind.replace('_',' ')|capitalize }}</td>
+      <td class="text-muted-drop">{{ tm.t(t.start_at) if t.start_at else 'Now' }}</td>
+      <td class="text-muted-drop">{{ tm.t(t.due_date) }}</td>
+      <td>
+        {% set sub = my_subs.get(t.id) %}
+        {% if sub and sub.status == 'graded' %}<span class="pill pill-teal">Graded · {{ sub.score }}%</span>
+        {% elif sub %}<span class="pill pill-amber">Submitted</span>
+        {% elif attempts.get(t.id) and attempts.get(t.id).status == 'in_progress' %}<span class="pill pill-amber">In progress</span>
+        {% else %}{% set st = assess_state(t) %}
+          {% if st == 'upcoming' %}<span class="pill pill-violet">Upcoming</span>
+          {% elif st == 'closed' %}<span class="pill pill-red">Missed</span>
+          {% else %}<span class="pill pill-teal">Open now</span>{% endif %}{% endif %}
+      </td>
+      <td><a href="{{ url_for('student_assignment_detail', assignment_id=t.id) }}" class="btn-drop-ghost">{{ 'Revise / open' if not sub and assess_state(t) != 'closed' else 'Open' }} {{ ic.icon('arrow-right', 12) }}</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">{{ ic.icon('target', 44) }}<p>No tests or exams scheduled yet.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

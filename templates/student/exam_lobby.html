@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}{{ info.title }}{% endblock %}
+{% block page_title %}{{ info.kind_label }}{% endblock %}
+{% block content %}
+<a href="{{ info.back_url }}" class="btn-drop-ghost" style="margin-bottom:16px; display:inline-flex;">← Back</a>
+{% include "student/_lobby_card.html" %}
+{% endblock %}

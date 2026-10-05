@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% import "shared/_time.html" as tm %}
+{% block title %}{{ study.topic }}{% endblock %}
+{% block page_title %}Study Alone{% endblock %}
+{% block content %}
+
+{% if study.status in ('ready', 'completed') %}<div id="study-timer" data-kind="study_session" data-id="{{ study.id }}" hidden></div>{% endif %}
+
+<a href="{{ url_for('student_study_alone') }}" class="btn-drop-ghost" style="margin-bottom:16px; display:inline-flex;">← Back to Study Alone</a>
+
+<h2 style="margin:0 0 4px;">{{ study.topic }}</h2>
+
+{% if study.status == 'pending' %}
+<div class="card-drop" style="padding:40px; text-align:center;">
+  <div class="ai-avatar thinking" style="margin:0 auto 16px;"><span class="mono" style="font-size:12px;">AI</span></div>
+  <h4>Designing your course…</h4>
+  <p class="text-muted-drop">Refresh in a moment.</p>
+</div>
+{% elif study.status == 'failed' %}
+<div class="card-drop" style="padding:40px; text-align:center;">
+  <h4>Course generation had an issue</h4>
+  <p class="text-muted-drop">Try creating a new study session — sometimes a shorter document or a more specific topic helps.</p>
+</div>
+{% else %}
+{% set course = study.course() %}
+<p class="text-muted-drop" style="margin-bottom:20px;">{{ course.overview }}</p>
+
+{% set sc = course.get('schedule') %}
+<div class="card-drop" style="margin-bottom:18px;"><div class="card-body-drop">
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:{{ '12px' if sc else '0' }};">
+    <h5 style="margin:0; display:flex; align-items:center; gap:8px;">{{ ic.icon('clock', 16) }} Your study schedule
+      {% if sc %}<span class="src-badge">{{ {'ai': 'AI-planned', 'edited': 'Edited by you'}.get(sc.get('generated_by'), 'Suggested') }}</span>{% endif %}</h5>
+    {% if sc and not attempt %}<button type="button" class="btn-drop-ghost" onclick="var f=document.getElementById('sched-form');f.style.display=f.style.display==='none'?'block':'none'">Edit dates</button>{% endif %}
+  </div>
+  {% if sc %}
+  <p class="text-muted-drop" style="font-size:13px; margin:0 0 12px;">
+    {{ sc.pacing.sessions_per_week }} sessions a week · about {{ sc.pacing.minutes_per_session }} min each · reminders arrive before every session, the revision day and the exam.</p>
+  <div style="display:grid; gap:8px; font-size:13.5px;">
+    {% for w in sc.weeks %}<div style="display:flex; gap:10px; flex-wrap:wrap; align-items:baseline;"><strong style="min-width:62px;">Week {{ w.number }}</strong>
+      {% for slot in w.slots %}<span class="pill pill-muted">{{ tm.t(slot|iso_dt, 'long') }}</span>{% endfor %}</div>{% endfor %}
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:baseline;"><strong style="min-width:62px;">Revision</strong><span class="pill pill-teal">{{ tm.t(sc.revision_at|iso_dt, 'long') }}</span></div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:baseline;"><strong style="min-width:62px;">Final exam</strong><span class="pill pill-red">{{ tm.t(sc.final_exam.at|iso_dt, 'long') }}</span><span class="text-muted-drop">{{ sc.final_exam.duration_minutes }} min</span></div>
+  </div>
+  {% if not attempt %}
+  <form method="POST" action="{{ url_for('student_study_schedule', session_id=study.id) }}" id="sched-form" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+    <input type="hidden" name="tz_offset" value="0">
+    {% for w in sc.weeks %}{% set wi = loop.index0 %}
+    <div style="margin-bottom:10px;"><div class="form-label-drop">Week {{ w.number }} sessions</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">{% for slot in w.slots %}<input class="form-control-drop" style="width:auto;" type="datetime-local" name="slot_{{ wi }}_{{ loop.index0 }}" data-utc="{{ slot }}">{% endfor %}</div></div>
+    {% endfor %}
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+      <div><div class="form-label-drop">Revision day</div><input class="form-control-drop" type="datetime-local" name="revision_at" data-utc="{{ sc.revision_at }}"></div>
+      <div><div class="form-label-drop">Final exam</div><input class="form-control-drop" type="datetime-local" name="exam_at" data-utc="{{ sc.final_exam.at }}"></div>
+      <div><div class="form-label-drop">Exam minutes</div><input class="form-control-drop" style="width:110px;" type="number" min="10" max="180" name="exam_duration" value="{{ sc.final_exam.duration_minutes }}"></div>
+    </div>
+    <button class="btn-drop-primary" type="submit">Save schedule</button>
+  </form>
+  {% endif %}
+  {% else %}
+  <form method="POST" action="{{ url_for('student_study_schedule', session_id=study.id) }}" style="margin-top:10px;">
+    <input type="hidden" name="tz_offset" value="0"><input type="hidden" name="action" value="auto">
+    <p class="text-muted-drop" style="font-size:13px; margin:0 0 10px;">This course was created before schedules existed.</p>
+    <button class="btn-drop-primary" type="submit">{{ ic.icon('sparkles', 15) }} Plan my schedule</button>
+  </form>
+  {% endif %}
+</div></div>
+
+{% for week in course.get('weeks', []) %}
+{% set widx = loop.index0 %}
+<div class="card-drop" style="margin-bottom:14px;">
+  <div class="card-body-drop">
+    {% set done = week.get('lessons', []) %}
+    {% set titles = week.get('lesson_titles', []) %}
+    {% set missing = (titles|length) - (done|length) %}
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px;">
+      <h5 style="margin:0;">Week {{ week.number }}: {{ week.title }}</h5>
+      {% if done and missing <= 0 %}<span class="pill pill-teal">Generated</span>
+      {% elif done %}<span class="pill pill-amber">{{ done|length }} of {{ titles|length }} lessons</span>
+      {% else %}<span class="pill pill-muted">Not generated</span>{% endif %}
+    </div>
+    <p class="text-muted-drop" style="font-size:13.5px; margin-bottom:14px;">{{ week.summary }}</p>
+
+    {% if done and missing <= 0 %}
+    <form method="POST" action="{{ url_for('student_study_week_generate', session_id=study.id, week_index=widx) }}" data-generate style="margin-bottom:14px;"
+          onsubmit="return confirm('Rewrite this week with fuller explanations? The current lessons will be replaced.');">
+      <input type="hidden" name="redo" value="1">
+      <button type="submit" class="btn-drop-ghost">{{ ic.icon('refresh', 14) }} Regenerate in detail</button>
+    </form>
+    {% endif %}
+
+    {% if not done or missing > 0 %}
+    {% if titles %}
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+      {% for t in titles %}<span class="pill pill-muted">{{ t }}</span>{% endfor %}
+    </div>
+    {% endif %}
+    <form method="POST" action="{{ url_for('student_study_week_generate', session_id=study.id, week_index=widx) }}" data-generate style="margin-bottom:14px;">
+      <button type="submit" class="btn-drop-primary">{{ ic.icon('sparkles', 15) }} {{ 'Generate remaining lessons' if done else 'Generate this week' }}</button>
+    </form>
+    {% endif %}
+
+    {% for lesson in week.get('lessons', []) %}
+    {% set lidx = loop.index0 %}
+    {% set uid = 'w' ~ widx ~ 'l' ~ lidx %}
+    <details style="margin-bottom:10px; border:1px solid var(--border); border-radius:12px; padding:12px 14px;">
+      <summary style="cursor:pointer; font-weight:600; font-size:14px;">{{ lesson.title }}</summary>
+
+      <div style="margin-top:14px; font-size:13.5px; display:grid; gap:18px;">
+
+        {% if lesson.get('objectives') %}
+        <div>
+          <div class="lesson-section-label">{{ ic.icon('target', 13) }} What you'll learn</div>
+          <ul style="margin:8px 0 0; padding-left:18px;">
+            {% for o in lesson.objectives %}<li style="margin-bottom:4px;">{{ o|md_inline }}</li>{% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        {% if lesson.notes %}
+        <div>
+          <div class="lesson-section-label">{{ ic.icon('book-open', 13) }} Explanation</div>
+          <div class="md" style="margin:8px 0 0; line-height:1.7;">{{ lesson.notes|md }}</div>
+        </div>
+        {% endif %}
+
+        {% if lesson.get('definitions') %}
+        <div>
+          <div class="lesson-section-label">{{ ic.icon('bookmark', 13) }} Key terms</div>
+          <div style="margin-top:8px; display:grid; gap:6px;">
+            {% for d in lesson.definitions %}
+            {% set parts = d.split(':', 1) %}
+            <div class="card-drop" style="padding:10px 14px; box-shadow:none; background:var(--surface-2);">
+              <strong>{{ parts[0]|md_inline }}</strong>{% if parts|length > 1 %}<span class="text-muted-drop">:{{ parts[1]|md_inline }}</span>{% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if lesson.examples %}
+        <div>
+          <div class="lesson-section-label">{{ ic.icon('sparkles', 13) }} Worked examples</div>
+          <div class="md" style="margin:8px 0 0; line-height:1.7;">{{ lesson.examples|md }}</div>
+        </div>
+        {% endif %}
+
+        {% if lesson.get('applications') %}
+        <div>
+          <div class="lesson-section-label">{{ ic.icon('globe', 13) }} Real-life applications</div>
+          <div class="md" style="margin:8px 0 0; line-height:1.7;">{{ lesson.applications|md }}</div>
+        </div>
+        {% endif %}
+
+        {% if lesson.get('common_mistakes') %}
+        <div>
+          <div class="lesson-section-label">{{ ic.icon('alert-triangle', 13) }} Common mistakes to avoid</div>
+          <ul style="margin:8px 0 0; padding-left:18px;">
+            {% for cm in lesson.common_mistakes %}<li style="margin-bottom:4px;">{{ cm|md_inline }}</li>{% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        {% if lesson.get('practice') %}
+        <div>
+          <div class="lesson-section-label">{{ ic.icon('pencil', 13) }} Practice exercises</div>
+          <div style="margin-top:8px; display:grid; gap:8px;">
+            {% for p in lesson.practice %}
+            <details class="practice-item" style="border:1px solid var(--border); border-radius:10px; padding:10px 12px;">
+              <summary style="cursor:pointer; font-size:13.5px;">{{ loop.index }}. {{ p.question|md_inline }}</summary>
+              <p class="text-muted-drop" style="margin:8px 0 0; font-size:13px;"><strong style="color:var(--ink);">Answer:</strong> {{ p.answer|md_inline }}</p>
+            </details>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if lesson.get('quiz') %}
+        <div class="mini-quiz" data-uid="{{ uid }}" data-topic="{{ lesson.title }}">
+          <div class="lesson-section-label">{{ ic.icon('check-circle', 13) }} Quick check</div>
+          <div style="margin-top:8px;">
+            {% for q in lesson.quiz %}
+            {% set qidx = loop.index0 %}
+            <div class="mini-quiz-question" data-answer="{{ q.answer }}" style="margin-bottom:12px;">
+              <p style="font-weight:600; margin-bottom:8px;">{{ q.question|md_inline }}</p>
+              {% for opt in q.get('options', []) %}
+              <label class="exam-option" style="display:block; font-size:13px; padding:8px 11px; border:1px solid var(--border); border-radius:9px; margin-bottom:5px; cursor:pointer;">
+                <input type="radio" name="{{ uid }}-q{{ qidx }}" value="{{ opt }}" style="margin-right:8px;"><span>{{ opt|md_inline }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% endfor %}
+            <button type="button" class="btn-drop-secondary mini-quiz-check" style="font-size:13px; padding:8px 14px;">Check answers</button>
+            <span class="mini-quiz-result mono text-muted-drop" style="margin-left:10px; font-size:12.5px;"></span>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if lesson.get('revision') %}
+        <div>
+          <div class="lesson-section-label">{{ ic.icon('refresh-cw', 13) }} Revision summary</div>
+          <div class="md" style="margin:8px 0 0; line-height:1.7;">{{ lesson.revision|md }}</div>
+        </div>
+        {% endif %}
+
+        {% if lesson.get('homework') %}
+        <div>
+          <div class="lesson-section-label">{{ ic.icon('clipboard', 13) }} Homework</div>
+          <ul style="margin:8px 0 0; padding-left:18px;">
+            {% for h in lesson.homework %}<li style="margin-bottom:4px;">{{ h|md_inline }}</li>{% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+
+{% if study.status == 'ready' %}
+<div class="card-drop">
+  <div class="card-body-drop" style="text-align:center; padding:32px;">
+    {% set ready_weeks = course.get('weeks', [])|selectattr('lessons')|list %}
+    <p style="font-weight:600; margin-bottom:4px;">Finished going through the course?</p>
+    {% if ready_weeks %}
+    <p class="text-muted-drop" style="font-size:13.5px; margin-bottom:18px;">
+      Generate a final exam covering the {{ ready_weeks|length }} week{{ 's' if ready_weeks|length != 1 }} you've generated.
+    </p>
+    <p style="margin-bottom:16px;"><a class="btn-drop-ghost" href="{{ url_for('student_study_revise', session_id=study.id) }}">{{ ic.icon('refresh', 14) }} Revise what you've generated</a></p>
+    <form method="POST" action="{{ url_for('student_study_session_finish', session_id=study.id) }}" data-generate>
+      <button type="submit" class="btn-drop-primary">{{ ic.icon('sparkles', 15) }} Generate final exam</button>
+    </form>
+    {% else %}
+    <p class="text-muted-drop" style="font-size:13.5px; margin-bottom:0;">
+      Generate at least one week above first — the final exam is built from the weeks you've studied.
+    </p>
+    {% endif %}
+  </div>
+</div>
+{% elif study.status == 'completed' %}
+{% if attempt and attempt.status == 'submitted' %}
+<div class="card-drop" id="final-exam-card"><div class="card-body-drop">
+  <h5 style="margin-top:0; display:flex; align-items:center; gap:10px;">Final Exam result
+    {% if attempt.end_reason == 'violations' %}<span class="pill pill-red">Auto-submitted: too many strikes</span>
+    {% elif attempt.end_reason == 'time' %}<span class="pill pill-amber">Submitted when time ran out</span>{% endif %}</h5>
+  <div class="progress-track" style="margin:14px 0 6px;"><div class="progress-fill" style="width:{{ attempt.score or 0 }}%;"></div></div>
+  <p class="mono" style="margin:0 0 20px;">{{ attempt.correct }} / {{ attempt.total }} correct ({{ attempt.score|round|int }}%) · {{ attempt.violation_count or 0 }} strike{{ '' if attempt.violation_count == 1 else 's' }}</p>
+  {% for r in review %}
+  <div style="margin-bottom:12px; padding:12px 14px; border:1px solid {{ 'var(--teal)' if r.ok else 'var(--red)' }}; border-radius:12px; font-size:13.5px;">
+    <div style="font-weight:600; margin-bottom:6px;">{{ loop.index }}. {{ r.question|md_inline }}</div>
+    <div class="text-muted-drop">Your answer: {{ (r.yours or '— (blank)')|md_inline }}</div>
+    {% if not r.ok %}<div>Correct answer: <strong>{{ r.answer|md_inline }}</strong></div>{% endif %}
+  </div>
+  {% endfor %}
+</div></div>
+{% else %}
+{% set info = {
+  'title': 'Final exam: ' ~ study.topic, 'kind_label': 'Final exam', 'where': 'Study Alone',
+  'state': 'open' if exam_open else 'upcoming', 'secure': true,
+  'start': exam_info.at, 'due': none, 'duration': exam_info.duration, 'questions': exam_info.questions, 'limit': 3,
+  'start_url': url_for('student_study_exam_start', session_id=study.id) if exam_open else none,
+  'revise_url': url_for('student_study_revise', session_id=study.id), 'back_url': url_for('student_study_alone') } %}
+{% include "student/_lobby_card.html" %}
+{% endif %}
+{% endif %}
+
+{# The AI question box is hidden once the exam has been generated, so it can't be used during the exam. #}
+{% if study.status == 'ready' %}
+<!-- Ask about this course -->
+<div class="card-drop" style="margin-top:20px;">
+  <div class="card-body-drop">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+      <div class="ai-avatar" style="width:30px; height:30px;"><span class="mono" style="font-size:11px;">AI</span></div>
+      <h5 style="margin:0;">Ask a question about this course</h5>
+    </div>
+    <p class="text-muted-drop" style="font-size:13px; margin-bottom:14px;">
+      Stuck on something above? Ask DROP's AI tutor — it knows what course you're studying.
+    </p>
+
+    <div id="lesson-bot-window" style="max-height:260px; overflow-y:auto; margin-bottom:12px;">
+      <p id="lesson-bot-empty" class="text-muted-drop" style="font-size:12.5px;">No questions yet — ask below.</p>
+    </div>
+
+    <form id="lesson-bot-form" data-lesson-title="{{ study.topic }}" style="display:flex; gap:8px;">
+      <input class="form-control-drop" id="lesson-bot-input" type="text" placeholder="e.g. Can you explain that last example again?" style="flex:1;">
+      <button class="btn-drop-primary" id="lesson-bot-send" type="submit">Ask</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endif %}
+
+<script>
+/* Reports which questions were answered right/wrong so DROP can learn this student's strengths and weaknesses. */
+window.postAttempts = function (source, items) {
+  if (!items.length) return;
+  fetch("/api/track/solo-attempts", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_id: {{ study.id }}, source: source, items: items }),
+  }).catch(function () {});
+};
+</script>
+
+<style>
+.lesson-section-label {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--violet);
+}
+.lesson-section-label svg { width: 13px; height: 13px; }
+.mini-quiz-question .exam-option:hover { border-color: var(--violet); }
+</style>
+
+<script>
+(function () {
+  function isCorrect(selected, answer) {
+    if (!selected) return false;
+    var sel = selected.trim();
+    var ans = answer.trim();
+    if (sel.toLowerCase() === ans.toLowerCase()) return true;
+    var m = sel.match(/^([A-D])[.)]/i);
+    if (m && m[1].toLowerCase() === ans.replace(/[^A-Da-d]/g, "").toLowerCase()) return true;
+    return sel.toLowerCase().indexOf(ans.toLowerCase()) === 0;
+  }
+
+  document.querySelectorAll(".mini-quiz").forEach(function (quizEl) {
+    var checkBtn = quizEl.querySelector(".mini-quiz-check");
+    var resultEl = quizEl.querySelector(".mini-quiz-result");
+    if (!checkBtn) return;
+
+    checkBtn.addEventListener("click", function () {
+      var questions = quizEl.querySelectorAll(".mini-quiz-question");
+      var correctCount = 0;
+
+      questions.forEach(function (qEl) {
+        var answer = qEl.getAttribute("data-answer") || "";
+        var selected = qEl.querySelector("input[type=radio]:checked");
+        var labels = qEl.querySelectorAll(".exam-option");
+        var ok = selected && isCorrect(selected.value, answer);
+        if (ok) correctCount++;
+
+        labels.forEach(function (label) {
+          var input = label.querySelector("input");
+          label.style.borderColor = "var(--border)";
+          label.style.background = "transparent";
+          if (isCorrect(input.value, answer)) {
+            label.style.borderColor = "var(--teal)";
+            label.style.background = "rgba(31,191,143,0.08)";
+          } else if (input.checked) {
+            label.style.borderColor = "var(--red)";
+            label.style.background = "rgba(239,68,68,0.08)";
+          }
+        });
+      });
+
+      var pct = questions.length ? Math.round((correctCount / questions.length) * 100) : 0;
+      resultEl.textContent = correctCount + " / " + questions.length + " correct (" + pct + "%)";
+      postAttempts("solo_quiz", Array.prototype.filter.call(questions, function (qEl) {
+        return qEl.querySelector("input[type=radio]:checked");
+      }).map(function (qEl) {
+        var sel = qEl.querySelector("input[type=radio]:checked");
+        return { topic: quizEl.getAttribute("data-topic"), correct: isCorrect(sel.value, qEl.getAttribute("data-answer") || "") };
+      }));
+    });
+  });
+})();
+</script>
+<script>
+/* Generate buttons: show progress and stop double-clicks (a week can take a minute). */
+document.querySelectorAll('form[data-generate]').forEach(function (f) {
+  f.addEventListener('submit', function () {
+    document.querySelectorAll('form[data-generate] button').forEach(function (b) { b.disabled = true; });
+    var b = f.querySelector('button');
+    if (b) b.innerHTML = 'Generating… this can take a minute';
+  });
+});
+</script>
+{% endblock %}

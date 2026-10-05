@@ -1,0 +1,10 @@
+{% macro classroom_tabs(classroom, active) %}
+<div style="display:flex; gap:6px; overflow-x:auto; border-bottom:1px solid var(--border); margin-bottom:24px; padding-bottom:2px;">
+  <a href="{{ url_for('teacher_classroom_overview', classroom_id=classroom.id) }}" class="mode-chip {{ 'active' if active=='overview' }}" style="border-radius:10px 10px 0 0; border-bottom:none;">Overview</a>
+  <a href="{{ url_for('teacher_classroom_students', classroom_id=classroom.id) }}" class="mode-chip {{ 'active' if active=='students' }}" style="border-radius:10px 10px 0 0; border-bottom:none;">Students</a>
+  <a href="{{ url_for('teacher_classroom_analytics', classroom_id=classroom.id) }}" class="mode-chip {{ 'active' if active=='analytics' }}" style="border-radius:10px 10px 0 0; border-bottom:none;">Analytics</a>
+  <a href="{{ url_for('teacher_classroom_reports', classroom_id=classroom.id) }}" class="mode-chip {{ 'active' if active=='reports' }}" style="border-radius:10px 10px 0 0; border-bottom:none;">Reports</a>
+  <a href="{{ url_for('teacher_classroom_messages', classroom_id=classroom.id) }}" class="mode-chip {{ 'active' if active=='messages' }}" style="border-radius:10px 10px 0 0; border-bottom:none;">Messages</a>
+  <a href="{{ url_for('teacher_classroom_settings', classroom_id=classroom.id) }}" class="mode-chip {{ 'active' if active=='settings' }}" style="border-radius:10px 10px 0 0; border-bottom:none;">Settings</a>
+</div>
+{% endmacro %}

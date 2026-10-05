@@ -1,0 +1,4 @@
+{# {{ tm.t(datetime) }} -> a <time> the browser rewrites into the viewer's own timezone. #}
+{% macro t(dt, fmt='datetime') -%}
+{% if dt %}<time data-local data-fmt="{{ fmt }}" datetime="{{ dt|utc_iso }}">{{ dt.strftime('%b %d, %H:%M') }} UTC</time>{% else %}—{% endif %}
+{%- endmacro %}

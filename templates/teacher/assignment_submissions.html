@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% import "shared/_time.html" as tm %}
+{% block title %}{{ assignment.title }}{% endblock %}
+{% block page_title %}{{ classroom.name }}{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('teacher_classroom_overview', classroom_id=classroom.id) }}" class="btn-drop-ghost" style="margin-bottom:16px; display:inline-flex;">← Back to classroom</a>
+
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; gap:14px; flex-wrap:wrap;">
+  <div>
+    <h2 style="margin:0 0 4px;">{{ assignment.title }}</h2>
+    <p class="text-muted-drop" style="margin:0 0 8px;">
+      {{ assignment.kind.replace('_',' ')|capitalize }} ·
+      {% if assignment.has_questions() %}{{ assignment.questions()|length }} questions{% else %}questions not generated yet{% endif %}
+      {% if assignment.is_secure() %} · {{ assignment.time_limit() }} min{% endif %}
+    </p>
+    <div style="display:flex; flex-wrap:wrap; gap:8px;">
+      {% if assignment.is_secure() %}<span class="pill pill-violet">{{ ic.icon('target', 12) }} Secure exam mode · {{ assignment.strike_limit() }} strikes</span>{% endif %}
+      <span class="pill pill-muted">Opens: {{ tm.t(assignment.start_at) if assignment.start_at else 'immediately' }}</span>
+      <span class="pill pill-muted">Closes: {{ tm.t(assignment.due_date) if assignment.due_date else 'no deadline' }}</span>
+      <span class="pill {{ 'pill-amber' if state == 'upcoming' else ('pill-red' if state == 'closed' else 'pill-teal') }}">
+        {{ {'upcoming': 'Not open yet', 'open': 'Open now', 'closed': 'Closed'}[state] }}</span>
+    </div>
+  </div>
+  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+    <a href="{{ url_for('teacher_assignment_schedule', assignment_id=assignment.id) }}" class="btn-drop-secondary">{{ ic.icon('clock', 14) }} Schedule</a>
+    {% if assignment.has_questions() %}
+    <details style="position:relative;">
+      <summary class="btn-drop-primary" style="list-style:none; cursor:pointer;">{{ ic.icon('upload', 14) }} Export</summary>
+      <div class="card-drop" style="position:absolute; right:0; top:44px; z-index:20; width:250px; padding:8px;">
+        {% for what, label in (('results','Results (scores)'), ('questions','Question analysis'), ('violations','Integrity log')) %}
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:7px 10px; font-size:13.5px;">
+          <span>{{ label }}</span>
+          <span><a href="{{ url_for('teacher_assignment_export', assignment_id=assignment.id, what=what, fmt='csv') }}">CSV</a> ·
+                <a href="{{ url_for('teacher_assignment_export', assignment_id=assignment.id, what=what, fmt='xlsx') }}">Excel</a></span>
+        </div>
+        {% endfor %}
+        <div style="border-top:1px solid var(--border); margin-top:4px; padding:7px 10px; font-size:13.5px;">
+          <a href="{{ url_for('teacher_assignment_export', assignment_id=assignment.id, what='all', fmt='xlsx') }}">Everything (one Excel file)</a>
+        </div>
+      </div>
+    </details>
+    {% endif %}
+  </div>
+</div>
+
+{% if not assignment.has_questions() %}
+<div class="card-drop" style="padding:40px; text-align:center;">
+  <div class="ai-avatar" style="margin:0 auto 16px;"><span class="mono" style="font-size:12px;">AI</span></div>
+  <h4>Ready to write the questions?</h4>
+  <p class="text-muted-drop" style="max-width:460px; margin:0 auto 20px;">
+    Nothing has been generated yet, and students can't see this {{ assignment.kind.replace('_',' ') }} until you do.
+    The AI writes the questions from your class material{% if assignment.description %} and your instructions{% endif %}.
+  </p>
+  <form method="POST" action="{{ url_for('teacher_assignment_generate', assignment_id=assignment.id) }}" id="gen-form">
+    <button class="btn-drop-primary" type="submit" id="gen-btn">{{ ic.icon('sparkles', 16) }} Generate questions</button>
+  </form>
+</div>
+<script>
+document.getElementById('gen-form').addEventListener('submit', function () {
+  var b = document.getElementById('gen-btn'); b.disabled = true; b.innerHTML = 'Generating… this can take a minute';
+});
+</script>
+{% else %}
+<div class="card-drop" style="margin-bottom:18px;">
+  {% if submissions %}
+  <div class="table-scroll">
+  <table class="table-drop">
+    <thead><tr><th>Student</th><th>Score</th><th>Status</th><th>Submitted</th>{% if assignment.is_secure() %}<th>Time</th><th>Strikes</th>{% endif %}<th></th></tr></thead>
+    <tbody>
+    {% for s in submissions %}
+    {% set t = attempts.get(s.student_id) %}
+    <tr>
+      <td>{{ s.student.name }}</td>
+      <td>{{ s.score if s.score is not none else '—' }}</td>
+      <td><span class="pill {{ 'pill-teal' if s.status=='graded' else 'pill-amber' }}">{{ s.status }}</span>
+        {% if assignment.due_date and s.submitted_at > assignment.due_date and not assignment.is_secure() %}<span class="pill pill-red">late</span>{% endif %}
+        {% if t and t.end_reason == 'violations' %}<span class="pill pill-red">auto-submitted</span>
+        {% elif t and t.end_reason == 'time' %}<span class="pill pill-amber">timed out</span>{% endif %}</td>
+      <td class="text-muted-drop">{{ tm.t(s.submitted_at) }}</td>
+      {% if assignment.is_secure() %}
+      <td class="mono">{% if t and t.started_at and t.submitted_at %}{{ ((t.submitted_at - t.started_at).total_seconds() / 60)|round(1) }} min{% else %}—{% endif %}</td>
+      <td>{% if t %}<span class="pill {{ 'pill-red' if t.violation_count else 'pill-teal' }}">{{ t.violation_count or 0 }}</span>{% else %}—{% endif %}</td>
+      {% endif %}
+      <td style="display:flex; gap:8px; flex-wrap:wrap;">
+        {% if s.status != 'graded' %}
+        <form method="POST" action="{{ url_for('teacher_auto_grade_submission', submission_id=s.id) }}">
+          <button class="btn-drop-secondary" style="padding:6px 12px; font-size:12.5px;" type="submit">{{ ic.icon('sparkles', 13) }} Auto-grade</button>
+        </form>
+        {% endif %}
+        <a href="{{ url_for('teacher_grade_submission', submission_id=s.id) }}" class="btn-drop-ghost">Review</a>
+        {% if t %}<a href="{{ url_for('teacher_attempt_log', assignment_id=assignment.id, student_id=s.student_id) }}" class="btn-drop-ghost">Integrity log</a>{% endif %}
+        {% if assignment.is_secure() %}
+        <form method="POST" action="{{ url_for('teacher_attempt_reset', assignment_id=assignment.id, student_id=s.student_id) }}"
+              onsubmit="return confirm('Let {{ s.student.name|e }} take this again? Their current result will be deleted.');">
+          <button class="btn-drop-ghost" type="submit">Allow retake</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">{{ ic.icon('inbox', 40) }}<p>No submissions yet.</p></div>
+  {% endif %}
+</div>
+
+{% if waiting %}
+<div class="card-drop"><div class="card-body-drop">
+  <h5 style="margin-top:0;">Not submitted yet ({{ waiting|length }})</h5>
+  <div style="display:flex; flex-wrap:wrap; gap:8px;">
+    {% for st in waiting %}
+      {% set t = attempts.get(st.id) %}
+      <span class="pill {{ 'pill-amber' if t else 'pill-muted' }}">{{ st.name }}{% if t %} · in progress{% endif %}</span>
+    {% endfor %}
+  </div>
+</div></div>
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}Calendar{% endblock %}
+{% block page_title %}Calendar{% endblock %}
+{% block content %}
+<style>
+  .cal-head { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+  .cal-grid { display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .cal-dow { background:var(--surface-2); padding:8px; font-size:12px; font-weight:700; text-align:center; color:var(--muted); }
+  .cal-cell { background:var(--surface); min-height:104px; padding:6px; display:flex; flex-direction:column; gap:3px; }
+  .cal-cell.other { opacity:.45; } .cal-cell.today .cal-num { background:var(--violet); color:#fff; }
+  .cal-num { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; }
+  .chip { display:block; font-size:11.5px; line-height:1.3; padding:2px 6px; border-radius:6px; text-decoration:none; color:var(--ink);
+          border-left:3px solid var(--c); background:color-mix(in srgb, var(--c) 14%, transparent); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip b { font-weight:600; } .more { font-size:11px; color:var(--muted); cursor:pointer; background:none; border:0; text-align:left; padding:0 4px; }
+  .k-test { --c:#7c5cff; } .k-exam { --c:#ef4444; } .k-assignment { --c:#f59e0b; } .k-classwork { --c:#14b8a6; } .k-study { --c:#3b82f6; } .k-revision { --c:#22c55e; }
+  .cal-layout { display:grid; grid-template-columns:3fr 1fr; gap:20px; align-items:start; } @media (max-width:1000px) { .cal-layout { grid-template-columns:1fr; } }
+  .week-col .cal-cell { min-height:260px; } .legend span { font-size:12px; margin-right:12px; display:inline-flex; align-items:center; gap:5px; }
+  .legend i { width:10px; height:10px; border-radius:3px; background:var(--c); display:inline-block; }
+  .ag-item { display:block; padding:10px 14px; border-bottom:1px solid var(--border); text-decoration:none; color:var(--ink); border-left:3px solid var(--c); }
+  .ag-item small { color:var(--muted); display:block; }
+</style>
+
+<div class="cal-head">
+  <div style="display:flex; align-items:center; gap:8px;">
+    <button class="btn-drop-secondary" id="prev" type="button">‹</button>
+    <button class="btn-drop-secondary" id="today" type="button">Today</button>
+    <button class="btn-drop-secondary" id="next" type="button">›</button>
+    <h3 id="title" style="margin:0 0 0 8px;"></h3>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <button class="mode-chip active" id="v-month" type="button">Month</button>
+    <button class="mode-chip" id="v-week" type="button">Week</button>
+    <button class="btn-drop-ghost" type="button" onclick="dropEnableDesktopReminders()" title="Get a system notification for reminders while DROP is open">{{ ic.icon('bell', 14) }} Desktop alerts</button>
+  </div>
+</div>
+<div class="legend" style="margin-bottom:12px;">
+  <span class="k-test"><i></i>Test</span><span class="k-exam"><i></i>Exam</span><span class="k-assignment"><i></i>Assignment due</span>
+  <span class="k-classwork"><i></i>Classwork</span>{% if current_user.role == 'student' %}<span class="k-study"><i></i>Study</span><span class="k-revision"><i></i>Revision</span>{% endif %}
+</div>
+
+<div class="cal-layout">
+  <div><div id="cal"></div></div>
+  <div>
+    <h4 style="margin:0 0 10px;">Coming up</h4>
+    <div class="card-drop" id="agenda"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var EV = {{ events|tojson }};
+  EV.forEach(function (e) { e.s = new Date(e.start); e.e = new Date(e.end || e.start); });
+  EV = EV.filter(function (e) { return !isNaN(e.s); }).sort(function (a, b) { return a.s - b.s; });
+  var view = 'month', cur = new Date(); cur.setHours(0, 0, 0, 0);
+  var DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  function same(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+  function tm(d) { return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function mondayOf(d) { var x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); x.setHours(0, 0, 0, 0); return x; }
+  function chip(e) { return '<a class="chip k-' + e.kind + '" href="' + esc(e.url) + '" title="' + esc(e.title + ' — ' + (e.sub || '')) + '"><b>' + tm(e.s) + '</b> ' + esc(e.title) + '</a>'; }
+  function dayEvents(d) { return EV.filter(function (e) { return same(e.s, d); }); }
+  function cell(d, other, limit) {
+    var list = dayEvents(d), h = '<div class="cal-cell' + (other ? ' other' : '') + (same(d, new Date()) ? ' today' : '') + '"><div class="cal-num">' + d.getDate() + '</div>';
+    list.slice(0, limit).forEach(function (e) { h += chip(e); });
+    if (list.length > limit) h += '<button class="more" data-day="' + d.getTime() + '">+' + (list.length - limit) + ' more</button>';
+    return h + '</div>';
+  }
+  function render() {
+    var el = document.getElementById('cal'), h = '<div class="cal-grid">';
+    DOW.forEach(function (n) { h += '<div class="cal-dow">' + n + '</div>'; });
+    if (view === 'month') {
+      var first = new Date(cur.getFullYear(), cur.getMonth(), 1), start = mondayOf(first);
+      document.getElementById('title').textContent = first.toLocaleDateString([], { month: 'long', year: 'numeric' });
+      for (var i = 0; i < 42; i++) { var d = new Date(start); d.setDate(start.getDate() + i); h += cell(d, d.getMonth() !== first.getMonth(), 3); }
+    } else {
+      var ws = mondayOf(cur), we = new Date(ws); we.setDate(ws.getDate() + 6);
+      document.getElementById('title').textContent = ws.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' – ' + we.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+      for (var j = 0; j < 7; j++) { var d2 = new Date(ws); d2.setDate(ws.getDate() + j); h += cell(d2, false, 50); }
+    }
+    el.innerHTML = h + '</div>';
+    el.querySelectorAll('.more').forEach(function (b) { b.onclick = function () { cur = new Date(+b.dataset.day); setView('week'); }; });
+  }
+  function setView(v) {
+    view = v;
+    document.getElementById('v-month').classList.toggle('active', v === 'month');
+    document.getElementById('v-week').classList.toggle('active', v === 'week');
+    render();
+  }
+  function step(n) { if (view === 'month') cur = new Date(cur.getFullYear(), cur.getMonth() + n, 1); else cur.setDate(cur.getDate() + 7 * n); render(); }
+  document.getElementById('prev').onclick = function () { step(-1); };
+  document.getElementById('next').onclick = function () { step(1); };
+  document.getElementById('today').onclick = function () { cur = new Date(); cur.setHours(0, 0, 0, 0); render(); };
+  document.getElementById('v-month').onclick = function () { setView('month'); };
+  document.getElementById('v-week').onclick = function () { setView('week'); };
+
+  var now = new Date(), up = EV.filter(function (e) { return e.e >= now; }).slice(0, 8), ag = '';
+  up.forEach(function (e) {
+    ag += '<a class="ag-item k-' + e.kind + '" href="' + esc(e.url) + '">' + esc(e.title) + '<small>' +
+      e.s.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ' · ' + tm(e.s) + (e.sub ? ' · ' + esc(e.sub.split(' · closes')[0]) : '') + '</small></a>';
+  });
+  document.getElementById('agenda').innerHTML = ag || '<div class="empty-state" style="padding:24px;"><p style="font-size:13px;">Nothing scheduled.</p></div>';
+  render();
+})();
+</script>
+{% endblock %}

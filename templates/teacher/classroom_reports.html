@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% import "shared/_time.html" as tm %}
+{% import "teacher/_tabs.html" as tabs %}
+{% block title %}Reports · {{ classroom.name }}{% endblock %}
+{% block page_title %}{{ classroom.name }}{% endblock %}
+{% block content %}
+
+{{ tabs.classroom_tabs(classroom, 'reports') }}
+
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:16px; margin-bottom:26px;">
+  <div class="card-drop" style="padding:20px;">
+    <h5 style="margin:0 0 4px;">Gradebook</h5>
+    <p class="text-muted-drop" style="font-size:13px; margin-bottom:14px;">Every student × every assessment, with averages.</p>
+    <a class="btn-drop-primary" href="{{ url_for('teacher_classroom_export', classroom_id=classroom.id, what='gradebook', fmt='xlsx') }}">{{ ic.icon('upload', 14) }} Excel</a>
+    <a class="btn-drop-ghost" href="{{ url_for('teacher_classroom_export', classroom_id=classroom.id, what='gradebook', fmt='csv') }}">CSV</a>
+  </div>
+  <div class="card-drop" style="padding:20px;">
+    <h5 style="margin:0 0 4px;">Integrity log</h5>
+    <p class="text-muted-drop" style="font-size:13px; margin-bottom:14px;">Every exam event for every student.</p>
+    <a class="btn-drop-primary" href="{{ url_for('teacher_classroom_export', classroom_id=classroom.id, what='violations', fmt='xlsx') }}">{{ ic.icon('upload', 14) }} Excel</a>
+    <a class="btn-drop-ghost" href="{{ url_for('teacher_classroom_export', classroom_id=classroom.id, what='violations', fmt='csv') }}">CSV</a>
+  </div>
+  <div class="card-drop" style="padding:20px;">
+    <h5 style="margin:0 0 4px;">Everything</h5>
+    <p class="text-muted-drop" style="font-size:13px; margin-bottom:14px;">One workbook: gradebook, assessments, students, integrity, per-assessment results.</p>
+    <a class="btn-drop-primary" href="{{ url_for('teacher_classroom_export', classroom_id=classroom.id, what='all', fmt='xlsx') }}">{{ ic.icon('upload', 14) }} Excel workbook</a>
+  </div>
+</div>
+{% if not xlsx %}<p class="form-hint" style="margin:-10px 0 18px;">Excel export needs <code>pip install openpyxl</code>. Until it's installed, downloads fall back to CSV.</p>{% endif %}
+
+<h4 style="margin-bottom:14px;">Assessments</h4>
+<div class="card-drop">
+  {% if rows %}
+  <div class="table-scroll">
+  <table class="table-drop">
+    <thead><tr><th>Title</th><th>Opens</th><th>Closes</th><th>Submitted</th><th>Flagged</th><th>Auto-submitted</th><th></th></tr></thead>
+    <tbody>
+    {% for r in rows %}{% set a = r.a %}
+    <tr>
+      <td><a href="{{ url_for('teacher_assignment_submissions', assignment_id=a.id) }}">{{ a.title }}</a>
+        <div class="text-muted-drop" style="font-size:12px;">{{ a.kind.replace('_',' ')|capitalize }}{% if a.is_secure() %} · secure · {{ a.time_limit() }} min{% endif %}</div></td>
+      <td class="text-muted-drop">{{ tm.t(a.start_at) if a.start_at else 'immediately' }}</td>
+      <td class="text-muted-drop">{{ tm.t(a.due_date) }}</td>
+      <td class="mono">{{ r.submitted }} / {{ classroom.student_count() }}</td>
+      <td>{% if a.is_secure() %}<span class="pill {{ 'pill-amber' if r.flagged else 'pill-muted' }}">{{ r.flagged }}</span>{% else %}—{% endif %}</td>
+      <td>{% if a.is_secure() %}<span class="pill {{ 'pill-red' if r.auto else 'pill-muted' }}">{{ r.auto }}</span>{% else %}—{% endif %}</td>
+      <td style="display:flex; gap:8px;">
+        <a class="btn-drop-ghost" href="{{ url_for('teacher_assignment_schedule', assignment_id=a.id) }}">Schedule</a>
+        <a class="btn-drop-ghost" href="{{ url_for('teacher_assignment_export', assignment_id=a.id, what='results', fmt='xlsx') }}">Results</a>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><p>No assessments have been generated yet.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% import "shared/_time.html" as tm %}
+{% block title %}Revision{% endblock %}
+{% block page_title %}Revision{% endblock %}
+{% block content %}
+
+{% if upcoming_tests or solo_upcoming %}
+<h4 style="margin-bottom:14px;">{{ ic.icon('clock', 16) }} Revise for what's coming</h4>
+<div class="card-drop" style="margin-bottom:24px;">
+  {% for a in upcoming_tests %}
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--border);">
+    <div>
+      <div style="font-weight:600; font-size:14px;">{{ a.title }}</div>
+      <div class="text-muted-drop" style="font-size:12.5px;">{{ a.kind.replace('_',' ')|capitalize }} · {{ a.classroom.name }} ·
+        {% if a.start_at and assess_state(a) == 'upcoming' %}opens {{ tm.t(a.start_at, 'long') }}{% elif a.due_date %}closes {{ tm.t(a.due_date, 'long') }}{% else %}open now{% endif %}</div>
+    </div>
+    <a href="{{ url_for('student_assignment_revise', assignment_id=a.id) }}" class="btn-drop-primary" style="padding:8px 14px; font-size:13px;">{{ ic.icon('refresh', 14) }} Revise</a>
+  </div>
+  {% endfor %}
+  {% for x in solo_upcoming %}
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--border);">
+    <div>
+      <div style="font-weight:600; font-size:14px;">Final exam: {{ x.study.topic }}</div>
+      <div class="text-muted-drop" style="font-size:12.5px;">Study Alone · {{ tm.t(x.at, 'long') }}</div>
+    </div>
+    <a href="{{ url_for('student_study_revise', session_id=x.study.id) }}" class="btn-drop-primary" style="padding:8px 14px; font-size:13px;">{{ ic.icon('refresh', 14) }} Revise</a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid-2">
+  <div>
+    <h4 style="margin-bottom:14px;">{{ ic.icon('refresh', 16) }} Recommended review</h4>
+    {% if stats.weak_topics %}
+    <div class="card-drop" style="margin-bottom:14px;">
+      <div class="card-body-drop">
+        <h5 style="margin-top:0;">Weak topics — practise these first</h5>
+        {% for t in stats.weak_topics %}
+        <div class="topic-row">
+          <div><div class="name">{{ t.topic }}</div><div class="meta">{{ t.correct }} of {{ t.attempts }} correct</div></div>
+          <div class="bar-mini"><span class="acc-bad" style="width:{{ t.accuracy }}%;"></span></div>
+          <div class="mono" style="text-align:right;">{{ t.accuracy|round|int }}%</div>
+        </div>
+        {% endfor %}
+        <a href="{{ url_for('student_tutor') }}" class="btn-drop-primary" style="margin-top:14px;">{{ ic.icon('zap', 15) }} Ask the AI tutor for help</a>
+      </div>
+    </div>
+    {% elif profile and profile.weak_topics() %}
+    <div class="card-drop" style="margin-bottom:14px;"><div class="card-body-drop">
+      <h5 style="margin-top:0;">Weak topics — practise these first</h5>
+      {% for t in profile.weak_topics() %}<span class="pill pill-red" style="margin:3px;">{{ t }}</span>{% endfor %}
+    </div></div>
+    {% else %}
+    <div class="card-drop empty-state" style="padding:30px;">
+      {{ ic.icon('refresh', 36) }}
+      <p style="font-size:13.5px;">Complete a few quizzes so DROP can learn your weak spots.</p>
+    </div>
+    {% endif %}
+
+    {% if stats.strong_topics %}
+    <div class="card-drop"><div class="card-body-drop">
+      <h5 style="margin-top:0;">Your strong topics</h5>
+      <div class="chip-row">{% for t in stats.strong_topics %}<span class="pill pill-teal">{{ t.topic }} · {{ t.accuracy|round|int }}%</span>{% endfor %}</div>
+    </div></div>
+    {% endif %}
+
+    {% if stats.misconceptions %}
+    <div class="card-drop" style="margin-top:14px;"><div class="card-body-drop">
+      <h5 style="margin-top:0;">Mistakes to watch for</h5>
+      {% for x in stats.misconceptions[:4] %}
+      <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:13.5px; border-bottom:1px solid var(--border);"><span>{{ x.label }}</span><span class="mono text-muted-drop">{{ x.count }}×</span></div>
+      {% endfor %}
+    </div></div>
+    {% endif %}
+  </div>
+
+  <div>
+    <h4 style="margin-bottom:14px;">Recently completed lessons</h4>
+    <div class="card-drop">
+      {% for p in recent_lessons %}
+      <a href="{{ url_for('student_lesson', classroom_id=p.lesson.week.classroom_id, lesson_id=p.lesson_id) }}" style="display:flex; justify-content:space-between; align-items:center; padding:13px 18px; border-bottom:1px solid var(--border); text-decoration:none; color:var(--ink);">
+        <span style="font-size:13.5px;">{{ p.lesson.title }}</span>
+        <span class="pill {{ 'pill-teal' if p.quiz_score and p.quiz_score>=70 else 'pill-amber' }}">{{ p.quiz_score or 0 }}%</span>
+      </a>
+      {% else %}
+      <div class="empty-state" style="padding:30px;"><p style="font-size:13px;">No completed lessons yet.</p></div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}Review submission{% endblock %}
+{% block page_title %}{{ assignment.title }}{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('teacher_assignment_submissions', assignment_id=assignment.id) }}" class="btn-drop-ghost" style="margin-bottom:16px; display:inline-flex;">← Back to submissions</a>
+
+<div style="display:grid; grid-template-columns:2fr 1fr; gap:22px;">
+  <div>
+    <h3 style="margin-top:0;">{{ submission.student.name }}'s answers</h3>
+    {% set questions = assignment.questions() %}
+    {% set answers = submission.answers() %}
+    {% set feedback = submission.feedback_list() %}
+    {% for q in questions %}
+    <div class="card-drop" style="margin-bottom:12px;">
+      <div class="card-body-drop">
+        <div style="font-weight:600; margin-bottom:8px;">{{ loop.index }}. {{ q.question|md_inline }}</div>
+        <div class="text-muted-drop" style="font-size:13.5px; margin-bottom:8px;">Answer: {{ (answers[loop.index0] if loop.index0 < answers|length else '(no answer)')|md_inline }}</div>
+        {% if feedback and loop.index0 < feedback|length %}
+        {% set fb = feedback[loop.index0] %}
+        <div class="gradient-bar" style="width:100%; margin-bottom:8px;"></div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+          <span class="pill {{ 'pill-teal' if fb.is_correct else 'pill-red' }}">{{ fb.score }}%</span>
+          {% if fb.misconception and fb.misconception != 'none' %}
+          <span class="pill pill-amber">{{ fb.misconception.replace('_',' ') }}</span>
+          {% endif %}
+        </div>
+        <p style="font-size:13.5px; margin:0;">{{ fb.feedback|md_inline }}</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div>
+    <div class="card-drop">
+      <div class="card-body-drop">
+        <h4 style="margin-top:0;">Finalize grade</h4>
+        <form method="POST">
+          <div style="margin-bottom:14px;">
+            <label class="form-label-drop">Overall score (%)</label>
+            <input class="form-control-drop" type="number" name="score" min="0" max="100" value="{{ submission.score or '' }}">
+          </div>
+          <div style="margin-bottom:14px;">
+            <label class="form-label-drop">Feedback note</label>
+            <textarea class="form-control-drop" name="feedback" rows="4" placeholder="Optional note to the student"></textarea>
+          </div>
+          <button class="btn-drop-primary" type="submit" style="width:100%; justify-content:center;">Save grade</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

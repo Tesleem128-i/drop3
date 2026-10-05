@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ code }} · DROP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body style="display:flex; align-items:center; justify-content:center; min-height:100vh;">
+  <div style="text-align:center;">
+    <div class="drop-mark" style="margin:0 auto 20px;">D</div>
+    <div style="font-family:var(--font-mono); font-size:64px; font-weight:700; background:var(--gradient); -webkit-background-clip:text; background-clip:text; color:transparent;">{{ code }}</div>
+    <p class="text-muted-drop" style="margin-bottom:24px;">{{ message }}</p>
+    <a class="btn-drop-primary" href="/">Back to DROP</a>
+  </div>
+</body>
+</html>

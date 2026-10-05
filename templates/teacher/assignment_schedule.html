@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}Schedule · {{ assignment.title }}{% endblock %}
+{% block page_title %}{{ classroom.name }}{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('teacher_assignment_submissions', assignment_id=assignment.id) }}" class="btn-drop-ghost" style="margin-bottom:16px; display:inline-flex;">← Back</a>
+
+<div class="card-drop" style="max-width:640px;">
+  <div class="card-body-drop">
+    <h3 style="margin:0 0 4px;">Schedule</h3>
+    <p class="text-muted-drop" style="margin-bottom:20px;">{{ assignment.title }} · {{ assignment.kind.replace('_',' ')|capitalize }}. Times are in your own timezone; each student sees them in theirs.</p>
+    <form method="POST">
+      {% include "teacher/_schedule_fields.html" %}
+      <button class="btn-drop-primary" type="submit" style="margin-top:10px;">{{ ic.icon('check', 15) }} Save schedule</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

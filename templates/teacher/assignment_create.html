@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}New assignment{% endblock %}
+{% block page_title %}{{ classroom.name }}{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('teacher_classroom_overview', classroom_id=classroom.id) }}" class="btn-drop-ghost" style="margin-bottom:16px; display:inline-flex;">← Back to classroom</a>
+
+<div class="card-drop" style="max-width:660px;">
+  <div class="card-body-drop">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+      <div class="ai-avatar"><span class="mono" style="font-size:12px;">AI</span></div>
+      <h3 style="margin:0;">Create assessment</h3>
+    </div>
+    <p class="text-muted-drop" style="margin-bottom:20px;">The AI will write the actual questions for you based on the title and type.</p>
+
+    <form method="POST" id="assign-form">
+      <div style="margin-bottom:16px;">
+        <label class="form-label-drop">Title</label>
+        <input class="form-control-drop" type="text" name="title" placeholder="e.g. Quadratic Equations Practice" required>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label class="form-label-drop">Type</label>
+        <select class="form-select-drop" name="kind">
+          <option value="classwork">Classwork</option>
+          <option value="assignment" selected>Assignment</option>
+          <option value="weekly_test">Weekly test</option>
+          <option value="monthly_test">Monthly test</option>
+        </select>
+      </div>
+      {% include "teacher/_schedule_fields.html" %}
+      <div style="margin:16px 0 22px;">
+        <label class="form-label-drop">Notes for the AI (optional)</label>
+        <textarea class="form-control-drop" name="description" rows="3" placeholder="Any focus areas or instructions"></textarea>
+      </div>
+      <button class="btn-drop-primary" type="submit" id="assign-btn" style="width:100%; justify-content:center;">{{ ic.icon('sparkles', 16) }} Generate with AI</button>
+    </form>
+  </div>
+</div>
+<script>
+(function () {   /* tests default to secure mode, classwork/assignments don't */
+  var kind = document.querySelector('[name=kind]'), box = document.getElementById('secure-box');
+  function sync() { box.checked = kind.value.indexOf('test') > -1; box.dispatchEvent(new Event('change')); }
+  kind.addEventListener('change', sync); sync();
+})();
+document.getElementById('assign-form').addEventListener('submit', function() {
+  var b = document.getElementById('assign-btn'); b.disabled = true; b.innerHTML = 'Writing questions…';
+});
+</script>
+{% endblock %}

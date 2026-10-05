@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% import "teacher/_tabs.html" as tabs %}
+{% block title %}Analytics · {{ classroom.name }}{% endblock %}
+{% block page_title %}{{ classroom.name }}{% endblock %}
+{% block content %}
+
+{{ tabs.classroom_tabs(classroom, 'analytics') }}
+
+{% set k = cs.kpis %}
+
+<div class="section-head" style="margin-top:0;">
+  <div>
+    <h2 style="margin:0 0 2px;">Class analytics</h2>
+    <p class="text-muted-drop" style="margin:0; font-size:13.5px;">What students are studying, how long, and how it shows up in their results.</p>
+  </div>
+  <form method="POST" action="{{ url_for('teacher_classroom_analytics_refresh', classroom_id=classroom.id) }}">
+    <button class="btn-drop-primary" type="submit">{{ ic.icon('refresh-cw', 15) }} Refresh analysis</button>
+  </form>
+</div>
+
+<div class="kpi-grid">
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ k.avg_score }}%</div>
+    <div class="stat-label">Average score</div>
+  </div>
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ k.completion_rate }}%</div>
+    <div class="stat-label">Assessment completion</div>
+  </div>
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ k.avg_minutes_per_student }}<span style="font-size:14px; color:var(--muted);"> min</span></div>
+    <div class="stat-label">Study time per student</div>
+  </div>
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ k.correlation if k.correlation is not none else '—' }}</div>
+    <div class="stat-label">Study time ↔ score (r)</div>
+  </div>
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ k.active_week }}<span style="font-size:14px; color:var(--muted);"> / {{ cs.n_students }}</span></div>
+    <div class="stat-label">Active in last 7 days</div>
+  </div>
+  <div class="card-drop stat-card">
+    <div class="stat-value" style="color:{{ 'var(--red)' if k.at_risk else 'var(--teal)' }};">{{ k.at_risk }}</div>
+    <div class="stat-label">Students at high risk</div>
+  </div>
+</div>
+
+{% if not cs.has_data %}
+<div class="card-drop" style="margin-bottom:22px;">
+  <div class="empty-state" style="padding:44px 20px;">
+    {{ ic.icon('chart', 44) }}
+    <p style="max-width:520px; margin:0 auto;">No learning data yet. DROP now records how long students spend on each lesson and how they answer every question — charts and AI analysis appear here as soon as students start studying and submitting work.</p>
+  </div>
+</div>
+{% endif %}
+
+{# ------------------------------ AI analysis ------------------------------ #}
+{% if insight %}
+<div class="ai-note" style="margin-bottom:22px;">
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+    <div class="ai-avatar" style="width:30px; height:30px;"><span class="mono" style="font-size:10px;">AI</span></div>
+    <h4 style="margin:0;">Class analysis</h4>
+    <span class="src-badge">{{ 'AI-written' if insight_row.source == 'ai' else 'Rules-based · connect an AI key for deeper analysis' }}</span>
+    <span class="src-badge">Updated {{ insight_row.updated_at.strftime('%b %d, %I:%M %p') }}</span>
+  </div>
+  <p style="font-size:15px; margin-bottom:16px;">{{ insight.get('summary') }}</p>
+
+  <div class="grid-2" style="margin-bottom:16px;">
+    <div class="insight-col">
+      <h5>{{ ic.icon('thumbs-up', 16) }} Class strengths</h5>
+      {% for s in insight.get('class_strengths', []) %}
+      <div class="insight-item good"><strong>{{ s.topic }}</strong>{{ s.note }}</div>
+      {% else %}<p class="text-muted-drop" style="font-size:13px;">Not enough data to call out strengths yet.</p>{% endfor %}
+    </div>
+    <div class="insight-col">
+      <h5>{{ ic.icon('alert-triangle', 16) }} Class weaknesses</h5>
+      {% for w in insight.get('class_weaknesses', []) %}
+      <div class="insight-item bad"><strong>{{ w.topic }}</strong>{{ w.note }}{% if w.reteach %}<span class="fix">→ {{ w.reteach }}</span>{% endif %}</div>
+      {% else %}<p class="text-muted-drop" style="font-size:13px;">No clear weak spots yet.</p>{% endfor %}
+    </div>
+  </div>
+
+  {% if insight.get('study_time_insight') %}
+  <div class="callout" style="margin-bottom:16px;"><strong>Study time:</strong> {{ insight.study_time_insight }}</div>
+  {% endif %}
+
+  <div class="grid-3">
+    <div class="insight-col">
+      <h5>{{ ic.icon('target', 16) }} What to do this week</h5>
+      <ol class="action-list">{% for a in insight.get('teaching_actions', []) %}<li>{{ a }}</li>{% endfor %}</ol>
+    </div>
+    <div class="insight-col">
+      <h5>{{ ic.icon('eye', 16) }} Needs attention</h5>
+      {% for s in insight.get('students_needing_attention', []) %}
+      <div class="insight-item bad"><strong>{{ s.name }}</strong>{{ s.reason }}</div>
+      {% else %}<p class="text-muted-drop" style="font-size:13px;">Nobody flagged right now.</p>{% endfor %}
+    </div>
+    <div class="insight-col">
+      <h5>{{ ic.icon('award', 16) }} Worth celebrating</h5>
+      {% for s in insight.get('students_to_celebrate', []) %}
+      <div class="insight-item good"><strong>{{ s.name }}</strong>{{ s.reason }}</div>
+      {% else %}<p class="text-muted-drop" style="font-size:13px;">Keep going — wins will appear here.</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ------------------------- Study time vs results ------------------------- #}
+<div class="section-head"><h3>Does study time affect scores?</h3></div>
+
+<div class="grid-2" style="margin-bottom:22px;">
+  <div class="card-drop chart-card"><div class="card-body-drop">
+    <h4 class="chart-title">{{ ic.icon('trending-up', 17) }} Over time</h4>
+    <p class="chart-sub">Average study minutes per student (bars) against average score (line), week by week.</p>
+    <div class="chart-box"><canvas id="ch-weekly"></canvas></div>
+  </div></div>
+  <div class="card-drop chart-card"><div class="card-body-drop">
+    <h4 class="chart-title">{{ ic.icon('users', 17) }} Student by student</h4>
+    <p class="chart-sub">Each dot is a student: total study minutes vs. their average score.</p>
+    <div class="chart-box"><canvas id="ch-scatter"></canvas></div>
+  </div></div>
+</div>
+
+<div class="grid-2" style="margin-bottom:22px;">
+  <div class="card-drop chart-card"><div class="card-body-drop">
+    <h4 class="chart-title">{{ ic.icon('layers', 17) }} Scores by study-time group</h4>
+    <p class="chart-sub">Students grouped by how much they study, compared on average score.</p>
+    <div class="chart-box short"><canvas id="ch-buckets"></canvas></div>
+  </div></div>
+  <div class="card-drop"><div class="card-body-drop">
+    <h4 class="chart-title" style="margin-bottom:8px;">{{ ic.icon('sparkles', 17) }} What this means</h4>
+    <p style="font-size:14.5px; margin-bottom:12px;">{{ k.correlation_text }}</p>
+    <p class="text-muted-drop" style="font-size:12.5px; margin:0;">Correlation shows a link, not a cause — a student who studies a lot and still scores low usually needs a different method, not more time. Based on {{ k.n_points }} student{{ '' if k.n_points == 1 else 's' }} with both study time and scores.</p>
+  </div></div>
+</div>
+
+{# ------------------------- Topics & mistakes ------------------------- #}
+<div class="section-head"><h3>Where students struggle</h3></div>
+
+<div class="grid-2" style="margin-bottom:22px;">
+  <div class="card-drop chart-card"><div class="card-body-drop">
+    <h4 class="chart-title">Hardest topics</h4>
+    <p class="chart-sub">Lowest class accuracy, from every quiz and assessment question.</p>
+    <div class="chart-box"><canvas id="ch-hard"></canvas></div>
+  </div></div>
+  <div class="card-drop chart-card"><div class="card-body-drop">
+    <h4 class="chart-title">Types of mistakes</h4>
+    <p class="chart-sub">Why answers go wrong — concept gaps vs. slips vs. guessing.</p>
+    <div class="chart-box"><canvas id="ch-mistakes"></canvas></div>
+  </div></div>
+</div>
+
+<div class="grid-3" style="margin-bottom:22px;">
+  <div class="card-drop chart-card"><div class="card-body-drop">
+    <h4 class="chart-title">By assessment type</h4>
+    <p class="chart-sub">Accuracy on quizzes, classwork, tests…</p>
+    <div class="chart-box short"><canvas id="ch-kind"></canvas></div>
+  </div></div>
+  <div class="card-drop chart-card"><div class="card-body-drop">
+    <h4 class="chart-title">Score distribution</h4>
+    <p class="chart-sub">Number of students per average-score band.</p>
+    <div class="chart-box short"><canvas id="ch-dist"></canvas></div>
+  </div></div>
+  <div class="card-drop chart-card"><div class="card-body-drop">
+    <h4 class="chart-title">Strongest topics</h4>
+    <p class="chart-sub">What the class has down well.</p>
+    {% for t in cs.easiest %}
+    <div class="topic-row">
+      <div><div class="name">{{ t.topic }}</div><div class="meta">{{ t.attempts }} questions</div></div>
+      <div class="bar-mini"><span class="acc-good" style="width:{{ t.accuracy }}%;"></span></div>
+      <div class="mono" style="text-align:right;">{{ t.accuracy|round|int }}%</div>
+    </div>
+    {% else %}<p class="text-muted-drop" style="font-size:13px;">Not enough answers yet.</p>{% endfor %}
+  </div></div>
+</div>
+
+<div class="card-drop chart-card" style="margin-bottom:22px;"><div class="card-body-drop">
+  <h4 class="chart-title">{{ ic.icon('book', 17) }} Time spent vs. success, by lesson</h4>
+  <p class="chart-sub">Average minutes students spend on each lesson (bars) and how well they do on its quiz (line). Long time + low score = a lesson that's hard to follow.</p>
+  <div class="chart-box tall"><canvas id="ch-lessons"></canvas></div>
+</div></div>
+
+{# ------------------------- Heatmap ------------------------- #}
+<div class="card-drop chart-card" style="margin-bottom:22px;"><div class="card-body-drop">
+  <h4 class="chart-title">{{ ic.icon('grid', 17) }} Strengths &amp; weaknesses heatmap</h4>
+  <p class="chart-sub">Accuracy for every student on the class's most-practised topics. Red = struggling, green = strong, grey = not attempted.</p>
+  {% if cs.heatmap.topics %}
+  <div class="table-scroll">
+  <table class="heatmap">
+    <thead><tr><th class="row-h"></th>{% for t in cs.heatmap.topics %}<th>{{ t }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% for r in cs.heatmap.rows %}
+    <tr>
+      <th class="row-h"><a href="{{ url_for('teacher_student_detail', classroom_id=classroom.id, student_id=r.student_id) }}">{{ r.name }}</a></th>
+      {% for v in r.cells %}
+        {% if v is none %}<td class="cell na">–</td>
+        {% else %}<td class="cell" style="background:hsla({{ (v * 1.4)|round|int }}, 70%, 48%, .38);">{{ v|round|int }}</td>{% endif %}
+      {% endfor %}
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <div class="heat-legend"><span>0%</span><span class="bar"></span><span>100%</span></div>
+  {% else %}
+  <div class="chart-empty">The heatmap appears once students have answered questions.</div>
+  {% endif %}
+</div></div>
+
+{# ------------------------- Student table ------------------------- #}
+<div class="card-drop" style="margin-bottom:22px;">
+  <div class="card-body-drop" style="padding-bottom:6px;">
+    <h4 class="chart-title">{{ ic.icon('users', 17) }} Every student at a glance</h4>
+    <p class="chart-sub">Auto-computed strengths and weaknesses for each student. Open a student for the full picture.</p>
+  </div>
+  <div class="table-scroll">
+  <table class="table-drop">
+    <thead><tr><th>Student</th><th>Avg score</th><th>Study time</th><th>Trend</th><th>Risk</th><th>Strong at</th><th>Needs help with</th><th></th></tr></thead>
+    <tbody>
+    {% for r in cs.students %}
+    <tr>
+      <td><strong>{{ r.name }}</strong>{% if r.days_inactive is none or r.days_inactive >= 7 %}<div class="form-hint" style="margin:0;">inactive{{ ' ' ~ r.days_inactive ~ 'd' if r.days_inactive is not none }}</div>{% endif %}</td>
+      <td class="mono">{{ (r.avg_score|round|int ~ '%') if r.avg_score is not none else '—' }}</td>
+      <td class="mono">{{ r.minutes|round|int }} min</td>
+      <td class="mono">{% if r.trend_delta is none %}<span class="text-muted-drop">—</span>{% elif r.trend_delta >= 0 %}<span class="trend-up">▲ {{ r.trend_delta }}</span>{% else %}<span class="trend-down">▼ {{ r.trend_delta|abs }}</span>{% endif %}</td>
+      <td><span class="pill {{ 'pill-red' if r.risk=='high' else ('pill-amber' if r.risk=='medium' else 'pill-teal') }}">{{ r.risk }}</span></td>
+      <td><div class="chip-row">{% for t in r.strong %}<span class="pill pill-teal">{{ t }}</span>{% else %}<span class="text-muted-drop">—</span>{% endfor %}</div></td>
+      <td><div class="chip-row">{% for t in r.weak %}<span class="pill pill-red">{{ t }}</span>{% else %}<span class="text-muted-drop">—</span>{% endfor %}</div></td>
+      <td><a href="{{ url_for('teacher_student_detail', classroom_id=classroom.id, student_id=r.student_id) }}" class="btn-drop-ghost">Open {{ ic.icon('arrow-right', 12) }}</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="text-muted-drop">No students enrolled yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+{# ------------------------- All topics ------------------------- #}
+{% if cs.topics %}
+<div class="card-drop" style="margin-bottom:22px;"><div class="card-body-drop">
+  <h4 class="chart-title">All topics</h4>
+  <p class="chart-sub">Every topic with at least one answered question, hardest first.</p>
+  {% for t in cs.topics %}
+  <div class="topic-row" style="grid-template-columns:1fr 130px 54px 120px;">
+    <div><div class="name">{{ t.topic }}</div><div class="meta">{{ t.attempts }} answers</div></div>
+    <div class="bar-mini"><span class="{{ 'acc-good' if t.accuracy >= 80 else ('acc-mid' if t.accuracy >= 60 else 'acc-bad') }}" style="width:{{ t.accuracy }}%;"></span></div>
+    <div class="mono" style="text-align:right;">{{ t.accuracy|round|int }}%</div>
+    <div class="meta" style="text-align:right;">{{ t.students_struggling }} struggling</div>
+  </div>
+  {% endfor %}
+</div></div>
+{% endif %}
+
+<script id="cs-data" type="application/json">{{ cs|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+(function () {
+  var cs = JSON.parse(document.getElementById("cs-data").textContent);
+  var C = window.DROPCharts;
+  var wk = cs.weekly;
+  C.timeVsScore("ch-weekly", wk.map(function (w) { return w.week; }), wk.map(function (w) { return w.minutes_per_student; }), wk.map(function (w) { return w.score; }), "Avg minutes / student");
+  C.scatter("ch-scatter", cs.scatter.points, cs.scatter.line, "Total study minutes", "Average score %");
+  C.bar("ch-buckets", cs.time_buckets.map(function (b) { return b.label + " (" + b.n + ")"; }), cs.time_buckets.map(function (b) { return b.avg_score; }), "Average score %", { colorByValue: true, max: 100, emptyMsg: "Needs at least 4 students with study time and scores." });
+  C.bar("ch-hard", cs.hardest.map(function (t) { return t.topic; }), cs.hardest.map(function (t) { return t.accuracy; }), "Accuracy %", { horizontal: true, colorByValue: true });
+  C.doughnut("ch-mistakes", cs.misconceptions.map(function (x) { return x.label; }), cs.misconceptions.map(function (x) { return x.count; }));
+  C.bar("ch-kind", cs.by_kind.map(function (x) { return x.kind; }), cs.by_kind.map(function (x) { return x.accuracy; }), "Accuracy %", { colorByValue: true, max: 100 });
+  C.bar("ch-dist", cs.distribution.labels, cs.distribution.counts, "Students", {});
+  C.lessonTimeVsScore("ch-lessons", cs.lessons.map(function (l) { return l.label; }), cs.lessons.map(function (l) { return l.avg_minutes; }), cs.lessons.map(function (l) { return l.avg_quiz; }));
+})();
+</script>
+{% endblock %}

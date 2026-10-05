@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+<div style="display:grid; gap:20px; max-width:640px;">
+
+  <div class="card-drop">
+    <div class="card-body-drop">
+      <h3 style="margin-top:0;">Profile</h3>
+      <form method="POST">
+        <input type="hidden" name="form_type" value="profile">
+        <div style="margin-bottom:14px;">
+          <label class="form-label-drop">Full name</label>
+          <input class="form-control-drop" type="text" name="name" value="{{ current_user.name }}">
+        </div>
+        <div style="margin-bottom:14px;">
+          <label class="form-label-drop">Email</label>
+          <input class="form-control-drop" type="email" value="{{ current_user.email }}" disabled>
+          <div class="form-hint">Email can't be changed in this demo build.</div>
+        </div>
+        <button class="btn-drop-primary" type="submit">Save profile</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card-drop">
+    <div class="card-body-drop">
+      <h3 style="margin-top:0;">Password</h3>
+      <form method="POST">
+        <input type="hidden" name="form_type" value="password">
+        <div style="margin-bottom:14px;">
+          <label class="form-label-drop">Current password</label>
+          <input class="form-control-drop" type="password" name="current_password" required>
+        </div>
+        <div style="margin-bottom:14px;">
+          <label class="form-label-drop">New password</label>
+          <input class="form-control-drop" type="password" name="new_password" minlength="8" required>
+        </div>
+        <button class="btn-drop-primary" type="submit">Change password</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card-drop">
+    <div class="card-body-drop">
+      <h3 style="margin-top:0;">Appearance</h3>
+      <p class="text-muted-drop" style="font-size:13.5px; margin-bottom:14px;">Toggle dark mode from the moon icon in the top bar — it's saved to your account automatically.</p>
+      <span class="pill pill-violet">Current: {{ current_user.theme|capitalize }}</span>
+    </div>
+  </div>
+
+  <div class="card-drop">
+    <div class="card-body-drop">
+      <h3 style="margin-top:0;">Notifications</h3>
+      <label style="display:flex; align-items:center; gap:10px; font-size:14px;">
+        <input type="checkbox" checked style="accent-color:var(--violet);"> Email me about graded work
+      </label>
+      <label style="display:flex; align-items:center; gap:10px; font-size:14px; margin-top:10px;">
+        <input type="checkbox" checked style="accent-color:var(--violet);"> Notify me about new announcements
+      </label>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

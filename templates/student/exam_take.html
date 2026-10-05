@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en" data-theme="{{ current_user.theme or 'light' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} · DROP exam</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script>
+    window.MathJax = { tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']], processEscapes: true } };
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js" defer></script>
+  <style>
+    body { margin:0; background:var(--bg, var(--surface-2, #f6f7fb)); -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+    textarea, input[type=text] { -webkit-user-select:text; user-select:text; }
+    .ex-top { position:sticky; top:0; z-index:50; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+              padding:12px 22px; background:var(--surface, #fff); border-bottom:1px solid var(--border, #ddd); }
+    .ex-top h1 { font-size:16px; margin:0; } .ex-top small { color:var(--muted, #777); }
+    .ex-stats { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    #timer { font-family:'JetBrains Mono', monospace; font-weight:700; font-size:20px; }
+    #timer.low { color:var(--red, #e11d48); }
+    .ex-main { max-width:820px; margin:22px auto 80px; padding:0 18px; }
+    body.locked .ex-main, body.locked .ex-top .ex-stats { visibility:hidden; }
+    .q-card { margin-bottom:14px; }
+    .q-text { font-weight:600; margin-bottom:12px; line-height:1.55; }
+    .exam-opt { display:flex; align-items:flex-start; gap:10px; padding:10px 13px; border:1px solid var(--border, #ddd); border-radius:10px; margin-bottom:7px; cursor:pointer; font-size:14px; }
+    .exam-opt:hover { border-color:var(--violet, #6d4aff); }
+    .exam-opt input { margin-top:3px; accent-color:var(--violet, #6d4aff); }
+    .exam-opt:has(input:checked) { border-color:var(--violet, #6d4aff); background:rgba(109,74,255,.07); }
+    .overlay { position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; padding:20px;
+               background:rgba(15,15,30,.92); }
+    .overlay.hidden { display:none; }
+    .overlay .box { max-width:520px; width:100%; background:var(--surface, #fff); color:var(--ink, #111); border-radius:18px; padding:28px; }
+    #toast { position:fixed; left:50%; top:74px; transform:translateX(-50%); z-index:90; background:var(--red, #e11d48); color:#fff;
+             padding:10px 18px; border-radius:12px; font-size:14px; display:none; max-width:90vw; }
+    #save-state { font-size:12px; color:var(--muted, #777); }
+  </style>
+</head>
+<body class="locked">
+
+<div id="gate" class="overlay">
+  <div class="box">
+    <h2 id="gate-title" style="margin:0 0 8px;">Ready to begin?</h2>
+    <p id="gate-msg" class="text-muted-drop" style="margin:0 0 18px; line-height:1.6;">
+      Your timer is <strong>already running</strong>. Click below to go fullscreen and reveal the questions.
+      From here, leaving fullscreen, switching tabs or windows counts as a strike
+      ({{ cfg.limit }} strikes = automatic submission).
+    </p>
+    <button id="gate-btn" class="btn-drop-primary" style="width:100%; justify-content:center;" type="button">Enter fullscreen &amp; start</button>
+  </div>
+</div>
+
+<div id="confirm" class="overlay hidden">
+  <div class="box">
+    <h3 style="margin:0 0 8px;">Submit your exam?</h3>
+    <p id="confirm-text" class="text-muted-drop" style="margin:0 0 18px;"></p>
+    <div style="display:flex; gap:10px;">
+      <button id="confirm-no" type="button" class="btn-drop-secondary" style="flex:1; justify-content:center;">Keep working</button>
+      <button id="confirm-yes" type="button" class="btn-drop-primary" style="flex:1; justify-content:center;">Submit</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<header class="ex-top">
+  <div><h1>{{ title }}</h1><small>{{ subtitle }}</small></div>
+  <div class="ex-stats">
+    <span id="save-state"></span>
+    <span class="pill pill-muted"><span id="answered">0</span> / {{ cfg.total }} answered</span>
+    <span class="pill pill-amber">Strikes <span id="strikes">{{ cfg.violations }}</span> / {{ cfg.limit }}</span>
+    <span id="timer">--:--</span>
+    <button id="submit-btn" type="button" class="btn-drop-primary" style="padding:8px 16px;">Submit</button>
+  </div>
+</header>
+
+<main class="ex-main">
+  <form id="exam-form" method="POST" action="{{ submit_url }}" autocomplete="off">
+    <input type="hidden" name="reason" id="reason" value="student">
+    {% for it in items %}
+    <div class="card-drop q-card"><div class="card-body-drop">
+      <div class="q-text">{{ it.n }}. {{ it.question|md_inline }}</div>
+      {% if it.options %}
+        {% for o in it.options %}
+        <label class="exam-opt"><input type="radio" name="answer_{{ it.index }}" value="{{ o.value }}" {{ 'checked' if o.value == it.saved }}><span>{{ o.label|md_inline }}</span></label>
+        {% endfor %}
+      {% else %}
+        <textarea class="form-control-drop" name="answer_{{ it.index }}" rows="4" placeholder="Type your answer…">{{ it.saved }}</textarea>
+      {% endif %}
+    </div></div>
+    {% endfor %}
+  </form>
+</main>
+
+<script>window.EXAM_CFG = {{ cfg|tojson }};</script>
+<script src="{{ url_for('static', filename='js/exam_guard.js') }}"></script>
+</body>
+</html>

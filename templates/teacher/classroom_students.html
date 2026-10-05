@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% import "teacher/_tabs.html" as tabs %}
+{% block title %}Students · {{ classroom.name }}{% endblock %}
+{% block page_title %}{{ classroom.name }}{% endblock %}
+{% block content %}
+
+{{ tabs.classroom_tabs(classroom, 'students') }}
+
+<div class="card-drop">
+  {% if enrollments %}
+  <div class="table-scroll">
+  <table class="table-drop">
+    <thead>
+      <tr><th>Student</th><th>Progress</th><th>Avg score</th><th>Study time</th><th>Predicted</th><th>Risk</th><th>Strong at</th><th>Needs help with</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for e in enrollments %}
+      {% set r = rows.get(e.student_id) %}
+      <tr>
+        <td>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="ai-avatar mono" style="width:30px;height:30px;font-size:11px;">{{ e.student.name[0]|upper }}</div>
+            {{ e.student.name }}
+          </div>
+        </td>
+        <td style="width:130px;"><div class="progress-track"><div class="progress-fill" style="width:{{ e.progress_percent }}%;"></div></div></td>
+        <td class="mono">{{ (r.avg_score|round|int ~ '%') if r and r.avg_score is not none else '—' }}</td>
+        <td class="mono">{{ r.minutes|round|int if r else 0 }} min</td>
+        <td>{{ e.predicted_grade or '—' }}</td>
+        <td><span class="pill {{ 'pill-red' if e.risk_level=='high' else ('pill-amber' if e.risk_level=='medium' else 'pill-teal') }}">{{ e.risk_level }}</span></td>
+        <td><div class="chip-row">{% for t in (r.strong if r else []) %}<span class="pill pill-teal">{{ t }}</span>{% else %}<span class="text-muted-drop">—</span>{% endfor %}</div></td>
+        <td><div class="chip-row">{% for t in (r.weak if r else []) %}<span class="pill pill-red">{{ t }}</span>{% else %}<span class="text-muted-drop">—</span>{% endfor %}</div></td>
+        <td><a href="{{ url_for('teacher_student_detail', classroom_id=classroom.id, student_id=e.student_id) }}" class="btn-drop-ghost">View {{ ic.icon('arrow-right', 12) }}</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    {{ ic.icon('users', 46) }}
+    <p>No students enrolled yet. Share the join code <strong>{{ classroom.join_code }}</strong> to get started.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

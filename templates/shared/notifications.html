@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}Notifications{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+{% block content %}
+<div class="card-drop">
+  {% if items %}
+    {% for n in items %}
+    <div style="padding:16px 20px; border-bottom:1px solid var(--border); display:flex; gap:14px; align-items:flex-start;">
+      <div class="ai-avatar" style="width:32px;height:32px;">{{ ic.icon('bell', 15) }}</div>
+      <div style="flex:1;">
+        <div style="font-size:14.5px;">{{ n.content }}</div>
+        <div style="font-size:12px; color:var(--muted); margin-top:3px;">{{ n.created_at.strftime('%b %d, %Y · %I:%M %p') }}</div>
+      </div>
+      <span class="pill pill-muted">{{ n.kind.replace('_',' ') }}</span>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      {{ ic.icon('bell', 46) }}
+      <p>You're all caught up — no notifications yet.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

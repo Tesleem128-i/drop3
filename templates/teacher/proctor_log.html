@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% import "shared/_time.html" as tm %}
+{% block title %}Integrity log{% endblock %}
+{% block page_title %}{{ assignment.title }}{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('teacher_assignment_submissions', assignment_id=assignment.id) }}" class="btn-drop-ghost" style="margin-bottom:16px; display:inline-flex;">← Back to submissions</a>
+
+<h2 style="margin:0 0 4px;">{{ attempt.student.name }}</h2>
+<p class="text-muted-drop" style="margin:0 0 18px;">Integrity log for {{ assignment.title }}</p>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:14px; margin-bottom:22px;">
+  <div class="card-drop stat-card"><div class="stat-value">{{ attempt.violation_count or 0 }} / {{ assignment.strike_limit() }}</div><div class="stat-label">Strikes</div></div>
+  <div class="card-drop stat-card"><div class="stat-value" style="font-size:20px;">{{ tm.t(attempt.started_at) }}</div><div class="stat-label">Started</div></div>
+  <div class="card-drop stat-card"><div class="stat-value">{{ minutes if minutes != '' else '—' }}</div><div class="stat-label">Minutes taken</div></div>
+  <div class="card-drop stat-card"><div class="stat-value" style="font-size:20px;">
+    {{ {'violations': 'Too many strikes', 'time': 'Time ran out', 'student': 'Student submitted'}.get(attempt.end_reason, 'In progress') }}</div><div class="stat-label">Ended by</div></div>
+</div>
+
+<div class="card-drop">
+  <table class="table-drop">
+    <thead><tr><th>Time</th><th>Event</th><th>Detail</th><th>Counted</th></tr></thead>
+    <tbody>
+    {% for ev in attempt.events %}
+    <tr>
+      <td class="text-muted-drop">{{ tm.t(ev.created_at, 'time') }}</td>
+      <td>{{ labels.get(ev.kind, ev.kind) }}</td>
+      <td class="text-muted-drop" style="font-size:12.5px;">{{ ev.detail or '' }}</td>
+      <td>{% if ev.counted %}<span class="pill pill-red">strike</span>{% else %}<span class="pill pill-muted">logged</span>{% endif %}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="text-muted-drop">Nothing unusual was recorded.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="form-hint" style="margin-top:12px;">
+  Strikes come from leaving fullscreen, switching tabs/windows, or leaving the exam page. Blocked copy/paste, right-clicks, shortcuts and
+  possible dev-tools use are logged as evidence but don't count towards auto-submit. A browser can't see a second device, so treat this as a signal, not proof.
+</p>
+{% endblock %}

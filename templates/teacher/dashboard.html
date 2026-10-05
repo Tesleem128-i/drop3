@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}Teacher Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+  <div>
+    <h2 style="margin:0 0 4px;">Welcome back, {{ current_user.name.split(' ')[0] }}</h2>
+    <p class="text-muted-drop" style="margin:0;">Here's what's happening across your classrooms.</p>
+  </div>
+  <a href="{{ url_for('teacher_classroom_create') }}" class="btn-drop-primary">{{ ic.icon('plus', 16) }} Create classroom</a>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:16px; margin-bottom:28px;">
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ classrooms|length }}</div>
+    <div class="stat-label">Active classrooms</div>
+  </div>
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ total_students }}</div>
+    <div class="stat-label">Total students</div>
+  </div>
+  <div class="card-drop stat-card">
+    <div class="stat-value">{{ pending_grading }}</div>
+    <div class="stat-label">Pending grading</div>
+  </div>
+  <div class="card-drop stat-card">
+    <div class="stat-value mono" style="background:var(--gradient); -webkit-background-clip:text; background-clip:text; color:transparent;">AI</div>
+    <div class="stat-label">AI-powered teaching</div>
+  </div>
+</div>
+
+<h3 style="margin-bottom:14px;">Your classrooms</h3>
+{% if classrooms %}
+<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:18px;">
+  {% for c in classrooms %}
+  <a href="{{ url_for('teacher_classroom_overview', classroom_id=c.id) }}" class="card-drop hoverable" style="display:block; padding:20px; text-decoration:none;">
+    <div class="gradient-bar" style="margin-bottom:14px; width:40px;"></div>
+    <h4 style="margin:0 0 4px; color:var(--ink);">{{ c.name }}</h4>
+    <p class="text-muted-drop" style="font-size:13.5px; margin-bottom:14px;">{{ c.subject }} · {{ c.duration_weeks }} weeks</p>
+    <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+      <span class="pill pill-violet">{{ ic.icon('users', 13) }} {{ c.student_count() }} students</span>
+      {% if c.ai_status == 'ready' %}
+        <span class="pill pill-teal">AI course ready</span>
+      {% elif c.ai_status == 'pending' %}
+        <span class="pill pill-amber">Generating…</span>
+      {% else %}
+        <span class="pill pill-red">Needs review</span>
+      {% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card-drop empty-state">
+  {{ ic.icon('book', 46) }}
+  <p>No classrooms yet. Create one and the AI will build the entire course for you.</p>
+  <a href="{{ url_for('teacher_classroom_create') }}" class="btn-drop-primary" style="margin-top:8px;">{{ ic.icon('plus', 16) }} Create your first classroom</a>
+</div>
+{% endif %}
+
+{% endblock %}

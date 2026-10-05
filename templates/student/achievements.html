@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% block title %}Achievements{% endblock %}
+{% block page_title %}Achievements{% endblock %}
+{% block content %}
+
+{% if achievements %}
+<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:16px;">
+  {% for a in achievements %}
+  <div class="card-drop" style="padding:22px; text-align:center;">
+    <div class="ai-avatar" style="margin:0 auto 12px; width:48px; height:48px;">{{ ic.icon('award', 22) }}</div>
+    <h5 style="margin:0 0 4px;">{{ a.title }}</h5>
+    <p class="text-muted-drop" style="font-size:13px; margin-bottom:8px;">{{ a.description }}</p>
+    <span class="pill pill-muted">{{ a.earned_at.strftime('%b %d, %Y') }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card-drop empty-state">
+  {{ ic.icon('award', 46) }}
+  <p>No achievements yet — complete a lesson quiz to earn your first badge.</p>
+</div>
+{% endif %}
+{% endblock %}

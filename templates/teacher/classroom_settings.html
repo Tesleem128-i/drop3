@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% import "teacher/_tabs.html" as tabs %}
+{% block title %}Settings · {{ classroom.name }}{% endblock %}
+{% block page_title %}{{ classroom.name }}{% endblock %}
+{% block content %}
+
+{{ tabs.classroom_tabs(classroom, 'settings') }}
+
+<div class="card-drop" style="max-width:560px;">
+  <div class="card-body-drop">
+    <form method="POST">
+      <div style="margin-bottom:14px;">
+        <label class="form-label-drop">Classroom name</label>
+        <input class="form-control-drop" type="text" name="name" value="{{ classroom.name }}">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label class="form-label-drop">Subject</label>
+        <input class="form-control-drop" type="text" name="subject" value="{{ classroom.subject }}">
+      </div>
+      <div style="margin-bottom:22px;">
+        <label class="form-label-drop">Target grade</label>
+        <input class="form-control-drop" type="text" name="target_grade" value="{{ classroom.target_grade or '' }}">
+      </div>
+      <button class="btn-drop-primary" type="submit">Save changes</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

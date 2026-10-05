@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% import "shared/_time.html" as tm %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; flex-wrap:wrap; gap:14px;">
+  <div>
+    <h2 style="margin:0 0 4px;">Hey {{ current_user.name.split(' ')[0] }} 👋</h2>
+    <p class="text-muted-drop" style="margin:0;">Your AI teacher has been busy. Here's what's next.</p>
+  </div>
+  <button class="btn-drop-primary" data-bs-toggle="modal" onclick="document.getElementById('join-modal').style.display='flex'">{{ ic.icon('plus', 16) }} Join classroom</button>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:14px; margin-bottom:28px;">
+  <div class="card-drop stat-card"><div class="stat-value">{{ classrooms|length }}</div><div class="stat-label">Classrooms</div></div>
+  <div class="card-drop stat-card"><div class="stat-value">{{ current_user.xp }}</div><div class="stat-label">XP · Level {{ current_user.level }}</div></div>
+  <div class="card-drop stat-card"><div class="stat-value">{{ current_user.streak_days }}</div><div class="stat-label">Day streak</div></div>
+  <div class="card-drop stat-card"><div class="stat-value">{{ current_user.coins }}</div><div class="stat-label">Coins</div></div>
+</div>
+
+<div style="display:grid; grid-template-columns:2fr 1fr; gap:22px;">
+  <div>
+    <h4 style="margin-bottom:14px;">My classrooms</h4>
+    {% if classrooms %}
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:16px;">
+      {% for e in enrollments %}
+      <a href="{{ url_for('student_classroom', classroom_id=e.classroom.id) }}" class="card-drop hoverable" style="display:block; padding:18px; text-decoration:none;">
+        <h5 style="margin:0 0 4px; color:var(--ink);">{{ e.classroom.name }}</h5>
+        <p class="text-muted-drop" style="font-size:13px; margin-bottom:12px;">{{ e.classroom.subject }}</p>
+        <div class="progress-track" style="margin-bottom:6px;"><div class="progress-fill" style="width:{{ e.progress_percent }}%;"></div></div>
+        <span class="mono" style="font-size:12px; color:var(--muted);">{{ e.progress_percent }}% complete</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card-drop empty-state">
+      {{ ic.icon('book', 44) }}
+      <p>You're not in a classroom yet. Ask your teacher for a join code, or start studying solo.</p>
+      <a href="{{ url_for('student_study_alone') }}" class="btn-drop-primary" style="margin-top:6px;">{{ ic.icon('sparkles', 15) }} Study alone instead</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h4 style="margin:0;">Coming up</h4>
+      <a href="{{ url_for('calendar_page') }}" class="btn-drop-ghost">{{ ic.icon('clock', 13) }} Calendar</a>
+    </div>
+    <div class="card-drop" style="margin-bottom:20px;">
+      {% for a in upcoming %}
+      <a href="{{ url_for('student_assignment_detail', assignment_id=a.id) }}" style="display:block; padding:13px 16px; border-bottom:1px solid var(--border); text-decoration:none; color:var(--ink);">
+        <div style="font-size:13.5px; font-weight:600;">{{ a.title }}</div>
+        <div style="font-size:12px; color:var(--muted);">{{ a.kind.replace('_',' ')|capitalize }} ·
+          {% if a.start_at and assess_state(a) == 'upcoming' %}opens {{ tm.t(a.start_at) }}{% else %}due {{ tm.t(a.due_date) if a.due_date else 'TBA' }}{% endif %}</div>
+      </a>
+      {% else %}
+      <div class="empty-state" style="padding:24px;"><p style="font-size:13px;">Nothing due — you're on track.</p></div>
+      {% endfor %}
+    </div>
+
+    <h4 style="margin-bottom:14px;">Recent achievements</h4>
+    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+      {% for a in achievements %}
+      <span class="pill pill-amber">{{ ic.icon('award', 13) }} {{ a.title }}</span>
+      {% else %}
+      <p class="text-muted-drop" style="font-size:13px;">Complete a lesson quiz to earn your first badge!</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div id="join-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:200; align-items:center; justify-content:center;">
+  <div class="card-drop" style="width:100%; max-width:380px;">
+    <div class="card-body-drop">
+      <h4 style="margin-top:0;">Join a classroom</h4>
+      <form method="POST" action="{{ url_for('student_join_classroom') }}">
+        <input class="form-control-drop" type="text" name="join_code" placeholder="Enter join code" style="text-transform:uppercase; margin-bottom:14px;" required>
+        <div style="display:flex; gap:10px;">
+          <button type="button" class="btn-drop-secondary" style="flex:1;" onclick="document.getElementById('join-modal').style.display='none'">Cancel</button>
+          <button type="submit" class="btn-drop-primary" style="flex:1; justify-content:center;">Join</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

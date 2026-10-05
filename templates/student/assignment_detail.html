@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% import "shared/_icons.html" as ic %}
+{% import "shared/_time.html" as tm %}
+{% block title %}{{ assignment.title }}{% endblock %}
+{% block page_title %}{{ assignment.title }}{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:18px;">
+  <h2 style="margin:0 0 4px;">{{ assignment.title }}</h2>
+  <p class="text-muted-drop" style="margin:0;">{{ assignment.kind.replace('_',' ')|capitalize }} · {{ classroom.name }}</p>
+</div>
+
+{% set questions = assignment.questions() %}
+
+{% if submission %}
+  {% set answers = submission.answers() %}
+  {% set feedback = submission.feedback_list() %}
+  {% if submission.status == 'graded' %}
+  <div class="card-drop" style="margin-bottom:18px; padding:18px 22px; display:flex; align-items:center; justify-content:space-between;">
+    <div>
+      <div class="stat-label">Your score</div>
+      <div class="stat-value">{{ submission.score }}%</div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+      <span class="pill pill-teal">{{ ic.icon('check', 13) }} Graded</span>
+      {% if attempt and attempt.end_reason == 'violations' %}<span class="pill pill-red">Auto-submitted: too many strikes</span>
+      {% elif attempt and attempt.end_reason == 'time' %}<span class="pill pill-amber">Submitted when time ran out</span>{% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="card-drop" style="margin-bottom:18px; padding:16px 22px;"><span class="pill pill-amber">Submitted — awaiting grading</span></div>
+  {% endif %}
+
+  {% for q in questions %}
+  <div class="card-drop" style="margin-bottom:12px;">
+    <div class="card-body-drop">
+      <div style="font-weight:600; margin-bottom:8px;">{{ loop.index }}. {{ q.question|md_inline }}</div>
+      <div class="text-muted-drop" style="font-size:13.5px; margin-bottom:8px;">Your answer: {{ (answers[loop.index0] if loop.index0 < answers|length else '—')|md_inline }}</div>
+      {% if feedback and loop.index0 < feedback|length %}
+      {% set fb = feedback[loop.index0] %}
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+        <span class="pill {{ 'pill-teal' if fb.is_correct else 'pill-red' }}">{{ fb.score }}%</span>
+        {% if fb.misconception and fb.misconception != 'none' %}<span class="pill pill-amber">{{ fb.misconception.replace('_',' ') }}</span>{% endif %}
+      </div>
+      <p style="font-size:13.5px; margin:0 0 6px;">{{ fb.feedback|md_inline }}</p>
+      {% if fb.reteach_tip %}<p class="text-muted-drop" style="font-size:12.5px; margin:0;">💡 {{ fb.reteach_tip|md_inline }}</p>{% endif %}
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+{% else %}
+  {% if late %}<div class="callout" style="margin-bottom:14px;">This was due {{ tm.t(assignment.due_date) }}. You can still hand it in, but your teacher will see it as late.</div>
+  {% elif assignment.due_date %}<div class="callout" style="margin-bottom:14px;">Due {{ tm.t(assignment.due_date, 'long') }}.</div>{% endif %}
+  <form method="POST">
+    {% for q in questions %}
+    <div class="card-drop" style="margin-bottom:14px;">
+      <div class="card-body-drop">
+        <div style="font-weight:600; margin-bottom:10px;">{{ loop.index }}. {{ q.question|md_inline }}</div>
+        {% set qidx = loop.index0 %}
+        {% if q.type == 'mcq' and q.options %}
+          {% for opt in q.options %}
+          <label style="display:flex; align-items:center; gap:8px; font-size:13.5px; margin-bottom:6px;">
+            <input type="radio" name="answer_{{ qidx }}" value="{{ opt }}" style="accent-color:var(--violet);" required>
+            <span>{{ opt|md_inline }}</span>
+          </label>
+          {% endfor %}
+        {% else %}
+        <textarea class="form-control-drop" name="answer_{{ qidx }}" rows="3" placeholder="Type your answer…"></textarea>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    <button class="btn-drop-primary" type="submit" style="width:100%; justify-content:center;">{{ ic.icon('sparkles', 15) }} Submit &amp; get instant AI grading</button>
+  </form>
+{% endif %}
+{% endblock %}

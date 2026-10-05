@@ -1,0 +1,71 @@
+{# The "before you start" card for a test/exam. Expects `info` (see _lobby_for_assignment / study_session). #}
+{% import "shared/_icons.html" as ic %}
+{% import "shared/_time.html" as tm %}
+<div class="card-drop" style="max-width:760px; margin:0 auto 18px;"><div class="card-body-drop">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+    <div>
+      <h2 style="margin:0 0 4px;">{{ info.title }}</h2>
+      <p class="text-muted-drop" style="margin:0;">{{ info.kind_label }} · {{ info.where }}</p>
+    </div>
+    {% if info.state == 'upcoming' %}<span class="pill pill-amber">{{ ic.icon('clock', 13) }} Not open yet</span>
+    {% elif info.state == 'closed' %}<span class="pill pill-red">Closed</span>
+    {% else %}<span class="pill pill-teal">{{ ic.icon('check', 13) }} Open now</span>{% endif %}
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:14px; margin-bottom:18px;">
+    <div><div class="stat-label">Opens</div><div style="font-weight:600;">{{ tm.t(info.start, 'long') if info.start else 'Now' }}</div></div>
+    <div><div class="stat-label">Closes</div><div style="font-weight:600;">{{ tm.t(info.due, 'long') if info.due else 'No deadline' }}</div></div>
+    {% if info.duration %}<div><div class="stat-label">Time limit</div><div style="font-weight:600;">{{ info.duration }} min</div></div>{% endif %}
+    <div><div class="stat-label">Questions</div><div style="font-weight:600;">{{ info.questions }}</div></div>
+  </div>
+
+  {% if info.state == 'upcoming' and info.start %}
+  <div class="callout" style="margin-bottom:16px;">Opens in <strong class="mono" data-countdown="{{ info.start|utc_iso }}">…</strong>.
+    Use the time to revise — the revision pack closes when you start the attempt.</div>
+  {% endif %}
+
+  {% if info.secure %}
+  <div style="margin-bottom:18px;">
+    <h5 style="margin:0 0 8px;">Exam rules</h5>
+    <ul style="margin:0; padding-left:20px; font-size:13.5px; line-height:1.75;">
+      <li>The exam runs in <strong>fullscreen</strong>. Leaving fullscreen, switching tab or window, or leaving the page is a <strong>strike</strong>.</li>
+      <li>After <strong>{{ info.limit }} strikes</strong> your exam is submitted automatically.</li>
+      <li>Copy, paste, right-click, printing and developer tools are blocked, and every attempt is logged for your teacher.</li>
+      <li>The timer runs on the server — refreshing or closing the page does <strong>not</strong> pause it. It submits by itself at zero.</li>
+      <li>Questions and answer options are shuffled for each student. You get <strong>one attempt</strong>.</li>
+      <li>Other DROP pages (lessons, the AI tutor) are switched off while the exam is running.</li>
+      <li>Use a laptop or desktop with Chrome, Edge or Firefox. Phones and tablets can't enforce fullscreen.</li>
+    </ul>
+  </div>
+  {% endif %}
+
+  <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+    {% if info.start_url %}
+    <form method="POST" action="{{ info.start_url }}" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:13.5px;"><input type="checkbox" id="agree" style="accent-color:var(--violet);"> I've read the rules</label>
+      <button class="btn-drop-primary" id="start-btn" type="submit" disabled>{{ ic.icon('zap', 15) }} Start now — the timer begins immediately</button>
+    </form>
+    <script>
+      document.getElementById('agree').addEventListener('change', function () { document.getElementById('start-btn').disabled = !this.checked; });
+    </script>
+    {% endif %}
+    {% if info.revise_url and info.state != 'closed' %}
+    <a class="btn-drop-secondary" href="{{ info.revise_url }}">{{ ic.icon('refresh', 15) }} Revise first</a>
+    {% endif %}
+  </div>
+</div></div>
+<script>
+(function () {
+  var els = document.querySelectorAll('[data-countdown]');
+  if (!els.length) return;
+  function tick() {
+    els.forEach(function (el) {
+      var s = Math.floor((new Date(el.getAttribute('data-countdown')) - new Date()) / 1000);
+      if (s <= 0) { location.reload(); return; }
+      var d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+      el.textContent = (d ? d + 'd ' : '') + (d || h ? h + 'h ' : '') + m + 'm ' + String(x).padStart(2, '0') + 's';
+    });
+  }
+  tick(); setInterval(tick, 1000);
+})();
+</script>

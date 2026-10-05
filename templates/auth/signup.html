@@ -1,0 +1,46 @@
+{% extends "auth_base.html" %}
+{% block title %}Sign up{% endblock %}
+{% block auth_content %}
+<h2 style="margin-bottom:4px;">Create your account</h2>
+<p class="text-muted-drop" style="margin-bottom:26px;">Tell us who you are and DROP will set up the right dashboard.</p>
+
+<form method="POST">
+  <div style="margin-bottom:16px;">
+    <label class="form-label-drop">I am a...</label>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+      <label class="card-drop" style="padding:14px; cursor:pointer; display:flex; align-items:center; gap:10px; border-width:2px;">
+        <input type="radio" name="role" value="teacher" checked style="accent-color:var(--violet);">
+        <div>
+          <div style="font-weight:600; font-size:14px;">Teacher</div>
+          <div style="font-size:12px; color:var(--muted);">Create AI-taught classrooms</div>
+        </div>
+      </label>
+      <label class="card-drop" style="padding:14px; cursor:pointer; display:flex; align-items:center; gap:10px; border-width:2px;">
+        <input type="radio" name="role" value="student" style="accent-color:var(--violet);">
+        <div>
+          <div style="font-weight:600; font-size:14px;">Student</div>
+          <div style="font-size:12px; color:var(--muted);">Learn with your AI teacher</div>
+        </div>
+      </label>
+    </div>
+  </div>
+
+  <div style="margin-bottom:16px;">
+    <label class="form-label-drop">Full name</label>
+    <input class="form-control-drop" type="text" name="name" placeholder="Ada Lovelace" required>
+  </div>
+  <div style="margin-bottom:16px;">
+    <label class="form-label-drop">Email</label>
+    <input class="form-control-drop" type="email" name="email" placeholder="you@school.com" required>
+  </div>
+  <div style="margin-bottom:22px;">
+    <label class="form-label-drop">Password</label>
+    <input class="form-control-drop" type="password" name="password" placeholder="At least 8 characters" required minlength="8">
+  </div>
+  <button class="btn-drop-primary" type="submit" style="width:100%; justify-content:center;">Create account</button>
+</form>
+
+<p style="text-align:center; margin-top:22px; font-size:14px;" class="text-muted-drop">
+  Already have an account? <a href="{{ url_for('login') }}">Log in</a>
+</p>
+{% endblock %}

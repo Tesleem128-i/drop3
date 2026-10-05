@@ -1,0 +1,45 @@
+{# Shared by "New assessment" and "Edit schedule". Expects optional `a` (the Assignment). #}
+{% set a = a|default(none) %}
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:6px;">
+  <div>
+    <label class="form-label-drop">Opens</label>
+    <input class="form-control-drop" type="datetime-local" name="start_at" {% if a and a.start_at %}data-utc="{{ a.start_at|utc_iso }}"{% endif %}>
+    <div class="form-hint">Students can't open it before this. Empty = open straight away.</div>
+  </div>
+  <div>
+    <label class="form-label-drop">Due / closes</label>
+    <input class="form-control-drop" type="datetime-local" name="due_at" {% if a and a.due_date %}data-utc="{{ a.due_date|utc_iso }}"{% endif %}>
+    <div class="form-hint">Tests and exams lock at this time. Assignments accept late work but flag it.</div>
+  </div>
+</div>
+<input type="hidden" name="tz_offset" value="0">
+
+<div style="margin:16px 0 8px; padding:14px 16px; border:1px solid var(--border); border-radius:12px;">
+  <label style="display:flex; align-items:center; gap:10px; font-weight:600; font-size:14px; cursor:pointer;">
+    <input type="checkbox" name="secure_mode" id="secure-box" style="accent-color:var(--violet); width:16px; height:16px;"
+           {% if a and a.is_secure() %}checked{% endif %}>
+    Secure exam mode
+  </label>
+  <div class="form-hint" style="margin:4px 0 12px 26px;">
+    Fullscreen is required, leaving it or switching tabs is logged as a strike, copy/paste/right-click/dev-tools are blocked,
+    questions and options are shuffled per student, and a server-side timer auto-submits.
+  </div>
+  <div id="secure-opts" style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-left:26px;">
+    <div>
+      <label class="form-label-drop">Time limit (minutes)</label>
+      <input class="form-control-drop" type="number" name="duration_minutes" min="5" max="300"
+             value="{{ a.duration_minutes if a and a.duration_minutes else '' }}" placeholder="{{ a.time_limit() if a else 'e.g. 30' }}">
+    </div>
+    <div>
+      <label class="form-label-drop">Strikes before auto-submit</label>
+      <input class="form-control-drop" type="number" name="max_violations" min="1" max="10" value="{{ a.max_violations if a and a.max_violations else 3 }}">
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var box = document.getElementById('secure-box'), opts = document.getElementById('secure-opts');
+  function sync() { opts.style.opacity = box.checked ? 1 : 0.45; opts.querySelectorAll('input').forEach(function (i) { i.disabled = !box.checked; }); }
+  box.addEventListener('change', sync); sync();
+})();
+</script>
